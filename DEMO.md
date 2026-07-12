@@ -3,6 +3,10 @@
 Five ways to see Tessera work, from a zero-setup one-liner to the full live
 agent-to-agent hire. Pick by how much you want to stand up.
 
+> Recording a demo video? Use the shot-by-shot director's script in
+> [SCRIPT.md](SCRIPT.md): every shot, action, and voiceover line, plus a 60
+> second cut. Grab a demo-ready transaction hash with `./demo/pick-tx.sh`.
+
 | # | Demo | Needs | Shows |
 |---|---|---|---|
 | A | One-command end-to-end | nothing (hits the hosted API) | full stack plus independent SDK verify |
