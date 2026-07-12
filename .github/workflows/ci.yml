@@ -1,0 +1,62 @@
+name: CI
+
+# Test every stack on push to main and on PRs: the Go agent, the two verifier
+# SDKs, and the Foundry contracts. Deploys are separate (deploy-agent.yml +
+# Vercel's native integration); this gate is about catching regressions.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  agent:
+    name: agent (go build/vet/test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: agent/go.sum
+      - working-directory: agent
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+  sdk-go:
+    name: sdk/go (verifier)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache-dependency-path: sdk/go/go.sum
+      - working-directory: sdk/go
+        run: go test ./...
+
+  sdk-js:
+    name: sdk/js (@tessera/avp)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sdk/js/package-lock.json
+      - working-directory: sdk/js
+        run: |
+          npm ci
+          npm test
+
+  contracts:
+    name: contracts (forge test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - working-directory: contracts
+        run: forge test -vv

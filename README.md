@@ -1,5 +1,7 @@
 # Tessera — the fact layer for the agent economy
 
+[![CI](https://github.com/Manuel-dev01/tessera/actions/workflows/ci.yml/badge.svg)](https://github.com/Manuel-dev01/tessera/actions/workflows/ci.yml)
+
 Tessera is an agent-native on-chain data verification oracle. It is a paid, callable
 **CAP Provider** on **Base**: other agents hire it to verify that a specific on-chain
 event occurred, and it returns a consensus-backed, cryptographically signed
