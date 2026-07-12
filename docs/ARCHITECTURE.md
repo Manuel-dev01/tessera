@@ -220,8 +220,10 @@ safe.
 ```
 GitHub (Manuel-dev01/tessera)
    │  push to main
-   ├──▶ Vercel (native Git)     ──▶ web app        https://tessera-console.vercel.app
-   ├──▶ GitHub Action           ──▶ Railway        https://tessera-api-production-...railway.app  (Go console-api)
+   ├──▶ Vercel (native Git)     ──▶ web app         https://tessera-console.vercel.app
+   ├──▶ GitHub Action           ──▶ Railway         tessera-api       (Go console-api, HTTP + SSE)
+   │                                                 tessera-provider  (CAP worker: keeps "Teressa" hireable)
+   │                                                 tessera-checker   (CAP worker: sub-checker for A2A depth)
    └──▶ GitHub Action (CI)      ──▶ go test, sdk tests, forge test   (every push and PR)
 
    push a sdk/js/v* tag ──▶ GitHub Action ──▶ npm publish @olanuel-tessera/avp
@@ -231,8 +233,16 @@ Base mainnet:  TesseraBond  0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85
 
 - **Web** deploys on Vercel through its native Git integration; root directory
   `web`.
-- **API** deploys on Railway from a Dockerfile via a GitHub Action; the container
-  binds the injected `$PORT`.
+- **API** (`tessera-api`) deploys on Railway from a Dockerfile via a GitHub
+  Action; the container binds the injected `$PORT`.
+- **CAP workers** run persistently on Railway so the agent is always online in the
+  CROO store. `tessera-provider` runs `cmd/provider` (`TRANSPORT=croo`) and is the
+  "Teressa" agent other agents hire; `tessera-checker` runs `cmd/checker`, the
+  independent sub-checker Teressa itself hires for a second opinion. Both are
+  WebSocket clients with no public port; the supervised transport reconnects after
+  a cooldown on any drop, and Railway restarts the container on exit, so the agent
+  cannot silently go offline. All three services build from the `agent/` context
+  and select their Dockerfile through `RAILWAY_DOCKERFILE_PATH`.
 - **CI** runs the Go build, vet, and tests, both SDK test suites, and the Foundry
   suite on every push and pull request.
 - **Releases** publish the npm SDK when a `sdk/js/v*` tag is pushed.

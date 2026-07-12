@@ -1,0 +1,22 @@
+# Tessera CAP provider — the long-running worker that keeps the "Teressa" agent
+# ONLINE in the CROO store so other agents can hire it. It is a WebSocket client
+# (no HTTP port): it connects to CAP, accepts negotiations, and delivers signed
+# AgenticVerificationProofs. LiveTransport supervises the WS and reconnects after
+# a cooldown, so transient drops never take the agent offline.
+#
+# Deploy target: a Railway worker service (no public domain). Set on the service:
+#   TRANSPORT=croo  CROO_SDK_KEY=...  ORACLE_PRIVATE_KEY=...
+#   BOND_ENABLED=true  BOND_CONTRACT=0x69D0...fF85  CONSENSUS_MODE=internal
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/provider ./cmd/provider
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 tessera
+USER tessera
+WORKDIR /app
+COPY --from=build /out/provider /app/provider
+ENTRYPOINT ["/app/provider"]

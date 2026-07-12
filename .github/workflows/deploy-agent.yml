@@ -1,9 +1,14 @@
 name: Deploy agent to Railway
 
-# Auto-deploy the Go console-api to Railway whenever the agent code changes on
-# main. Vercel deploys web/ via its own native Git integration; this workflow
-# covers the backend half. Needs a RAILWAY_TOKEN repo secret (a Railway project
-# token scoped to the tessera-api project).
+# Auto-deploy the Go services to Railway whenever the agent code changes on main.
+# Vercel deploys web/ via its own native Git integration; this workflow covers the
+# backend half: three services in the tessera-api Railway project, all built from
+# the agent/ context (each selects its Dockerfile via RAILWAY_DOCKERFILE_PATH):
+#   - tessera-api      the verification HTTP API (Dockerfile)
+#   - tessera-provider the CAP provider worker that keeps "Teressa" hireable (Dockerfile.provider)
+#   - tessera-checker  the sub-checker worker for A2A depth (Dockerfile.checker)
+# Needs a RAILWAY_TOKEN repo secret (a Railway PROJECT token; it can deploy any
+# service in the project).
 on:
   push:
     branches: [main]
@@ -15,6 +20,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    strategy:
+      # Deploy every service; one failing service should not cancel the others.
+      fail-fast: false
+      matrix:
+        service: [tessera-api, tessera-provider, tessera-checker]
     steps:
       - uses: actions/checkout@v4
 
@@ -25,8 +35,8 @@ jobs:
       - name: Install Railway CLI
         run: npm i -g @railway/cli
 
-      - name: Deploy console-api
+      - name: Deploy ${{ matrix.service }}
         working-directory: agent
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --ci --service tessera-api
+        run: railway up --ci --service ${{ matrix.service }}

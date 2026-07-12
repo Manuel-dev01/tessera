@@ -1,0 +1,21 @@
+# Tessera sub-checker — the long-running worker for the THIRD agent that Tessera
+# hires as an independent second opinion (A2A depth). It serves a "TX Receipt
+# Check" CAP service: given {chainId, txHash} it looks up the receipt and returns
+# {found, status, blockNumber, blockHash}. Like the provider it is a WebSocket
+# client with no HTTP port, and the supervised transport keeps it online.
+#
+# Deploy target: a Railway worker service (no public domain). Set on the service:
+#   CHECKER_SDK_KEY=...   (the third agent's SDK key; never committed)
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/checker ./cmd/checker
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates && adduser -D -u 10001 tessera
+USER tessera
+WORKDIR /app
+COPY --from=build /out/checker /app/checker
+ENTRYPOINT ["/app/checker"]
