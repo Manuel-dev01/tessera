@@ -32,6 +32,8 @@ func main() {
 	blockNumber := flag.Int64("block", 12000000, "block number that should contain the tx")
 	chainID := flag.Int64("chain", 8453, "EVM chain id (Base = 8453)")
 	timeout := flag.Duration("timeout", 3*time.Minute, "overall timeout")
+	serviceOverride := flag.String("service", "", "service id to hire (default SERVICE_ID from .env)")
+	keySel := flag.String("key", "requester", "which SDK key to hire with: requester (buyer) | provider (Teressa hires a sub-agent)")
 	flag.Parse()
 
 	cfg, err := config.Load(envPath())
@@ -39,20 +41,35 @@ func main() {
 		log.Error("config", "err", err)
 		os.Exit(1)
 	}
-	if cfg.ServiceID == "" {
-		log.Error("SERVICE_ID required (set it in .env)")
+
+	serviceID := cfg.ServiceID
+	if *serviceOverride != "" {
+		serviceID = *serviceOverride
+	}
+	if serviceID == "" {
+		log.Error("service id required (set SERVICE_ID in .env or pass -service)")
 		os.Exit(1)
 	}
-	requesterKey := cfg.RequesterSDKKey
-	if requesterKey == "" {
+
+	// The buyer hires with REQUESTER_SDK_KEY; -key provider lets Teressa itself
+	// hire another agent's service (A2A depth), using its provider key as a buyer.
+	var requesterKey string
+	if *keySel == "provider" {
 		requesterKey = cfg.CrooSDKKey
+	} else {
+		requesterKey = cfg.RequesterSDKKey
+		if requesterKey == "" {
+			requesterKey = cfg.CrooSDKKey
+		}
 	}
 	if requesterKey == "" {
 		log.Error("no requester key: set REQUESTER_SDK_KEY (second agent) in .env")
 		os.Exit(1)
 	}
-	if requesterKey == cfg.CrooSDKKey {
-		log.Warn("requester key equals provider key — CAP will reject with 'cannot negotiate own service'. Set REQUESTER_SDK_KEY to a second agent's key.")
+	// CAP forbids hiring your OWN service. Only warn when the selected key owns the
+	// target service (buyer key with its own service, or provider key + Teressa's service).
+	if requesterKey == cfg.CrooSDKKey && serviceID == cfg.ServiceID {
+		log.Warn("hiring own service with the provider key — CAP will reject with 'cannot negotiate own service'")
 	}
 
 	rpc := "https://mainnet.base.org"
@@ -147,9 +164,9 @@ func main() {
 		"blockNumber": *blockNumber,
 	})
 
-	log.Info("negotiating", "serviceId", cfg.ServiceID)
+	log.Info("negotiating", "serviceId", serviceID, "key", *keySel)
 	neg, err := client.NegotiateOrder(ctx, croo.NegotiateOrderRequest{
-		ServiceID:    cfg.ServiceID,
+		ServiceID:    serviceID,
 		Requirements: string(requirements),
 	})
 	if err != nil {
