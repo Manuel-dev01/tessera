@@ -22,6 +22,9 @@ yarn-error.log*
 # SDK build output
 /sdk/js/dist/
 
+# demo run artifact
+/demo/last-proof.json
+
 # Foundry
 /contracts/out/
 /contracts/cache/

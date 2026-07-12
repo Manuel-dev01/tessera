@@ -13,6 +13,9 @@ as trustless evidence that an on-chain fact is true.
 
 Built for the CROO Agent Hackathon.
 
+**See it work in one command** (no setup — hits the live oracle, then verifies the
+proof independently): [`./demo/demo.sh`](demo/demo.sh). Full runbook in [`DEMO.md`](DEMO.md).
+
 ## Status
 
 | Phase | What | State |
