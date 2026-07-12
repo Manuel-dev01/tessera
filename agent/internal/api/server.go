@@ -37,6 +37,7 @@ type Server struct {
 	verifier *verify.Verifier
 	signer   *sign.Signer
 	bond     *bond.Client // nil when bonding disabled/unconfigured
+	merkler  handler.MerkleProver // nil when merkle proofs disabled
 	ec       *ethclient.Client
 	rpcURL   string
 
@@ -77,6 +78,7 @@ func New(ctx context.Context, cfg *config.Config, log *slog.Logger) (*Server, er
 	s := &Server{
 		cfg: cfg, log: log, engine: engine, verifier: verify.New(),
 		signer: signer, ec: ec, rpcURL: rpcURL,
+		merkler: app.BuildMerkleProver(cfg, log),
 	}
 	if cfg.BondContract != "" && cfg.OraclePrivateKey != "" {
 		if bc, err := bond.New(ctx, rpcURL, cfg.BondContract, cfg.OraclePrivateKey); err == nil {
@@ -253,7 +255,7 @@ func (s *Server) handleVerifyStream(w http.ResponseWriter, r *http.Request) {
 		"finalOk": out.FinalOK, "finality": out.Finality, "reason": out.Reason,
 	})
 
-	p, err := handler.AssembleProof(ctx, in, out, s.verifier, s.signer, s.bondOpts())
+	p, err := handler.AssembleProof(ctx, in, out, s.verifier, s.signer, s.bondOpts(), s.merkler)
 	if err != nil {
 		send("error", map[string]string{"error": err.Error()})
 		return
@@ -278,7 +280,7 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := s.engine.Fetch(r.Context(), in.TxHash)
-	p, err := handler.AssembleProof(r.Context(), in, out, s.verifier, s.signer, s.bondOpts())
+	p, err := handler.AssembleProof(r.Context(), in, out, s.verifier, s.signer, s.bondOpts(), s.merkler)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

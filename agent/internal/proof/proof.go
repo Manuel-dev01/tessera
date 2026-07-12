@@ -53,6 +53,20 @@ type Attestation struct {
 	Signature string `json:"signature"`
 }
 
+// MerkleProof is a transactions-trie inclusion proof (Phase 6): standalone
+// cryptographic evidence that the tx sits at txIndex in the block, checkable
+// against the block header's transactionsRoot with no trust in the oracle. Nodes
+// and leaf are 0x-hex; the leaf is the tx's consensus encoding and keccak256(leaf)
+// must equal txHash.
+type MerkleProof struct {
+	Type             string   `json:"type"`             // "transactionsTrie"
+	TransactionsRoot string   `json:"transactionsRoot"` // block header field this proof roots to
+	TxIndex          uint64   `json:"txIndex"`
+	Key              string   `json:"key"`   // 0x RLP(txIndex) — the trie key
+	Nodes            []string `json:"nodes"` // 0x MPT proof nodes, root -> leaf
+	Leaf             string   `json:"leaf"`  // 0x tx consensus encoding (the trie value)
+}
+
 // Bond is the on-chain honesty stake backing a proof (Phase 3).
 //   - contract/stakedUSDC/challengeWindowSec advertise the oracle's STANDING bond.
 //   - proofId identifies the core verified fact (keccak256 of the canonical proof
@@ -80,7 +94,7 @@ type Proof struct {
 	TxIndex       *int64           `json:"txIndex"`
 	Consensus     Consensus        `json:"consensus"`
 	Finality      *Finality        `json:"finality"`
-	MerkleProof   *json.RawMessage `json:"merkleProof"`
+	MerkleProof   *MerkleProof     `json:"merkleProof"`
 	Attestation   Attestation      `json:"attestation"`
 	Bond          *Bond            `json:"bond"`
 	Reason        *string          `json:"reason"`
@@ -128,6 +142,7 @@ type Fields struct {
 	Consensus   Consensus
 	Finality    *Finality
 	Bond        *Bond
+	MerkleProof *MerkleProof
 }
 
 // Build assembles an AVP from verified facts and the consensus/finality summary.
@@ -140,7 +155,7 @@ func Build(f Fields) Proof {
 		TxHash:        f.TxHash,
 		Consensus:     f.Consensus,
 		Finality:      f.Finality,
-		MerkleProof:   nil,
+		MerkleProof:   f.MerkleProof,
 		Attestation:   Attestation{Signer: placeholderSigner, Scheme: "EIP-191", Signature: placeholderSig},
 		Bond:          f.Bond,
 		Reason:        f.Reason,

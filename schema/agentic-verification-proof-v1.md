@@ -83,11 +83,41 @@ never an unsigned error.
 | `txIndex` | int \| null | Position of the tx in its block. |
 | `consensus` | object | `{sources, responders, agreed, quorum, agreedSources[]}`. Sources are queried concurrently; a dynamic quorum (supermajority of responders) must agree on `blockHash + status`. `verified` is only `true` when `agreed >= quorum`. |
 | `finality` | object \| null | `{finalized, finalizedBlock, confirmations}`. `verified:true` requires the block to be final (or ≥ configured confirmations). Null when consensus was not reached. |
-| `merkleProof` | object \| null | Reserved for a transactions-trie inclusion proof. Null in the MVP. |
+| `merkleProof` | object \| null | Transactions-trie inclusion proof: `{type:"transactionsTrie", transactionsRoot, txIndex, key, nodes[], leaf}`. Standalone cryptographic evidence the tx is at `txIndex` in the block, checkable against the header's `transactionsRoot`. Null when unavailable (e.g. no debug-capable source). See below. |
 | `attestation` | object | `{signer, scheme:"EIP-191", signature}` over the canonical proof. |
 | `bond` | object \| null | `{contract, stakedUSDC, challengeWindowSec, proofId, anchored, anchorTx}`. Advertises the oracle's standing USDC honesty stake; `anchored:true` (+ `anchorTx`) means this proof was individually committed on-chain and is trustlessly slashable. Null when bonding is disabled. |
 | `reason` | string \| null | Why `verified` is false. Null on success. |
 | `issuedAt` | int | Unix seconds when issued. |
+
+## Transactions-trie inclusion proof (`merkleProof`)
+
+A block header commits to its transactions via `transactionsRoot`, the root of a
+Merkle-Patricia trie keyed by `RLP(txIndex)` with each transaction's *consensus
+encoding* as the value. When present, `merkleProof` carries a standalone inclusion
+proof for the verified tx:
+
+| Field | Meaning |
+|---|---|
+| `type` | `"transactionsTrie"`. |
+| `transactionsRoot` | The root this proof resolves to — equals the block header's `transactionsRoot`. |
+| `txIndex` | Position of the tx in the block. |
+| `key` | `0x` RLP(txIndex) — the trie key. |
+| `nodes` | `0x` MPT proof nodes, root → leaf. |
+| `leaf` | `0x` the tx's consensus encoding; `keccak256(leaf) == txHash`. |
+
+It is **type-agnostic**: values are raw consensus encodings, so OP-stack deposit
+transactions (type `0x7E`, always index 0 on Base) are handled with no special
+casing. Two levels of trust:
+
+- **Oracle-vouched** — the AVP signature covers `merkleProof`, so verifying the
+  signature (above) plus checking `nodes` resolve under `transactionsRoot` to a
+  leaf hashing to `txHash` proves the oracle attests the tx's inclusion.
+- **Trustless** — additionally fetch the block header (by `blockHash`) and confirm
+  `header.transactionsRoot == merkleProof.transactionsRoot`. Then the inclusion is
+  proven with no trust in the oracle at all.
+
+Reference verifiers ship in [`../sdk`](../sdk): Go `avp.VerifyInclusion(...)` and
+JS `import { verifyInclusion } from "@tessera/avp/inclusion"`.
 
 ## Signing scheme
 

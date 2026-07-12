@@ -36,6 +36,13 @@ type Anchorer interface {
 	Anchor(ctx context.Context, proofID [32]byte, blockNumber, slashAmount *big.Int, claimedBlockHash [32]byte) (txHash string, err error)
 }
 
+// MerkleProver builds a transactions-trie inclusion proof for a verified tx
+// (Phase 6). Satisfied by *merkleproof.Prover. Optional and best-effort: a nil
+// prover or any error simply leaves merkleProof null.
+type MerkleProver interface {
+	Prove(ctx context.Context, blockNumber uint64, txIndex int, txHash string) (*proof.MerkleProof, error)
+}
+
 // BondOpts configures how proofs advertise / commit to the honesty bond.
 type BondOpts struct {
 	Enabled            bool     // stamp the standing-bond field on verified proofs
@@ -56,7 +63,7 @@ var nowUnix = func() int64 { return time.Now().Unix() }
 // finality gate, builds the AVP, and signs it (EIP-191). A verification/consensus
 // FAILURE is a signed verified:false proof, not an error — only malformed input
 // returns a non-nil error.
-func NewVerifyHandler(engine Fetcher, v *verify.Verifier, signer *sign.Signer, bondOpts BondOpts) OrderHandler {
+func NewVerifyHandler(engine Fetcher, v *verify.Verifier, signer *sign.Signer, bondOpts BondOpts, merkler MerkleProver) OrderHandler {
 	return func(ctx context.Context, requirements json.RawMessage) (json.RawMessage, error) {
 		var in verify.Input
 		if err := json.Unmarshal(requirements, &in); err != nil {
@@ -70,7 +77,7 @@ func NewVerifyHandler(engine Fetcher, v *verify.Verifier, signer *sign.Signer, b
 		}
 
 		out := engine.Fetch(ctx, in.TxHash)
-		p, err := AssembleProof(ctx, in, out, v, signer, bondOpts)
+		p, err := AssembleProof(ctx, in, out, v, signer, bondOpts, merkler)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +93,7 @@ func NewVerifyHandler(engine Fetcher, v *verify.Verifier, signer *sign.Signer, b
 // claim rules against the agreed facts, enforces the finality gate, stamps
 // consensus/finality/bond, and signs (EIP-191). Shared by the CAP handler and
 // the HTTP API so both produce byte-identical proofs.
-func AssembleProof(ctx context.Context, in verify.Input, out consensus.Outcome, v *verify.Verifier, signer *sign.Signer, bondOpts BondOpts) (proof.Proof, error) {
+func AssembleProof(ctx context.Context, in verify.Input, out consensus.Outcome, v *verify.Verifier, signer *sign.Signer, bondOpts BondOpts, merkler MerkleProver) (proof.Proof, error) {
 	var res verify.Result
 	var finality *proof.Finality
 	switch {
@@ -111,6 +118,14 @@ func AssembleProof(ctx context.Context, in verify.Input, out consensus.Outcome, 
 		AgreedSources: out.AgreedSources,
 	}
 	fields.Finality = finality
+	// Attach a transactions-trie inclusion proof for verified txs. Best-effort:
+	// a nil prover or any RPC/build error leaves merkleProof null (never fails the
+	// proof). Set before bond so proofId covers a consistent core.
+	if merkler != nil && res.Verified {
+		if mp, err := merkler.Prove(ctx, res.BlockNumber, int(res.TxIndex), in.TxHash); err == nil {
+			fields.MerkleProof = mp
+		}
+	}
 	if bondOpts.Enabled && res.Verified {
 		fields.Bond = buildBond(ctx, bondOpts, fields, res)
 	}

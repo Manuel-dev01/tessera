@@ -41,6 +41,12 @@ type Config struct {
 	APIAddr   string // API_ADDR (default :8787)
 	WebOrigin string // WEB_ORIGIN for CORS (default http://localhost:3000)
 
+	// Merkle inclusion proof (Phase 6). Populates the AVP merkleProof field from a
+	// debug_getRawBlock-capable RPC. Best-effort: if the endpoint lacks the method,
+	// merkleProof stays null.
+	MerkleProofEnabled bool   // MERKLE_PROOF_ENABLED (default true)
+	MerkleRPCURL       string // MERKLE_RPC_URL (default https://mainnet.base.org — supports debug_getRawBlock)
+
 	// Honesty bond (Phase 3).
 	BondEnabled        bool   // BOND_ENABLED: stamp the standing-bond field on verified proofs
 	BondContract       string // BOND_CONTRACT: TesseraBond address
@@ -98,6 +104,9 @@ func Load(envPath string) (*Config, error) {
 		cfg.APIAddr = ":" + port
 	}
 	cfg.WebOrigin = getenvDefault("WEB_ORIGIN", "http://localhost:3000")
+
+	cfg.MerkleProofEnabled = getenvBool("MERKLE_PROOF_ENABLED", true)
+	cfg.MerkleRPCURL = getenvDefault("MERKLE_RPC_URL", "https://mainnet.base.org")
 
 	if cfg.Transport == "croo" && cfg.CrooSDKKey == "" {
 		return nil, fmt.Errorf("TRANSPORT=croo requires CROO_SDK_KEY (set it in .env)")

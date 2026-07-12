@@ -16,6 +16,7 @@ import (
 	"tessera/agent/internal/config"
 	"tessera/agent/internal/consensus"
 	"tessera/agent/internal/handler"
+	"tessera/agent/internal/merkleproof"
 	"tessera/agent/internal/sign"
 	"tessera/agent/internal/source"
 	"tessera/agent/internal/verify"
@@ -73,7 +74,17 @@ func BuildVerifyHandler(cfg *config.Config, log *slog.Logger) (handler.OrderHand
 	if err != nil {
 		return nil, nil, err
 	}
-	return handler.NewVerifyHandler(engine, verify.New(), signer, bondOpts), signer, nil
+	return handler.NewVerifyHandler(engine, verify.New(), signer, bondOpts, BuildMerkleProver(cfg, log)), signer, nil
+}
+
+// BuildMerkleProver returns a transactions-trie inclusion prover, or nil when
+// disabled. It's best-effort at proof time, so a non-debug RPC just yields null.
+func BuildMerkleProver(cfg *config.Config, log *slog.Logger) handler.MerkleProver {
+	if !cfg.MerkleProofEnabled {
+		return nil
+	}
+	log.Info("merkle inclusion proofs enabled", "rpc", cfg.MerkleRPCURL)
+	return merkleproof.NewProver(cfg.MerkleRPCURL)
 }
 
 // buildBondOpts wires the on-chain honesty bond when BOND_ENABLED. Advertising
