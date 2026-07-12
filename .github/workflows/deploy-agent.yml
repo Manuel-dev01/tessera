@@ -1,0 +1,32 @@
+name: Deploy agent to Railway
+
+# Auto-deploy the Go console-api to Railway whenever the agent code changes on
+# main. Vercel deploys web/ via its own native Git integration; this workflow
+# covers the backend half. Needs a RAILWAY_TOKEN repo secret (a Railway project
+# token scoped to the tessera-api project).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "agent/**"
+      - ".github/workflows/deploy-agent.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Deploy console-api
+        working-directory: agent
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --ci --service tessera-api
