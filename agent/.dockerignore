@@ -1,0 +1,9 @@
+# Keep the build context lean and never ship local secrets/artifacts.
+.env
+.env.*
+bin/
+*.exe
+*.test
+*.out
+Dockerfile
+.dockerignore

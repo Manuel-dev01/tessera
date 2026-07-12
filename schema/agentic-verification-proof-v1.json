@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tessera.oracle/schema/agentic-verification-proof-v1.json",
+  "title": "AgenticVerificationProof",
+  "description": "A signed, consensus-backed attestation that an on-chain event occurred. Version avp/1.0. A signed negative (verified:false) is as valid and useful as a signed positive.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "verified",
+    "chainId",
+    "txHash",
+    "consensus",
+    "attestation",
+    "issuedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "avp/1.0",
+      "description": "Schema version tag. Verifiers MUST reject unknown versions."
+    },
+    "verified": {
+      "type": "boolean",
+      "description": "True if the claimed on-chain fact was confirmed by consensus; false otherwise. When false, `reason` MUST be populated."
+    },
+    "chainId": {
+      "type": "integer",
+      "description": "EVM chain id the fact was checked against. Base mainnet = 8453."
+    },
+    "blockNumber": {
+      "type": ["integer", "null"],
+      "description": "Block number containing the tx. Null when the tx could not be located."
+    },
+    "blockHash": {
+      "type": ["string", "null"],
+      "pattern": "^0x[0-9a-fA-F]{64}$",
+      "description": "Canonical hash of the block agreed on by consensus."
+    },
+    "txHash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{64}$",
+      "description": "Transaction hash the requester asked Tessera to verify."
+    },
+    "txIndex": {
+      "type": ["integer", "null"],
+      "description": "Index of the tx within its block. Null when not located."
+    },
+    "consensus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "responders", "agreed", "quorum"],
+      "description": "Multi-source agreement summary. Sources are queried concurrently; a dynamic quorum of responders must agree on blockHash + receipt status.",
+      "properties": {
+        "sources": { "type": "integer", "minimum": 1, "description": "Number of independent sources configured." },
+        "responders": { "type": "integer", "minimum": 0, "description": "Sources that answered within the timeout." },
+        "agreed": { "type": "integer", "minimum": 0, "description": "Number of responders that agreed on the signed value (blockHash + status)." },
+        "quorum": { "type": "integer", "minimum": 1, "description": "Dynamic threshold (supermajority of responders) that had to be met. `verified` can only be true when agreed >= quorum." },
+        "agreedSources": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Names of the responders that agreed (transparency; usable in a fraud challenge)."
+        }
+      }
+    },
+    "finality": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "How settled the block is. `verified:true` requires the block to be final (or >= configured confirmations), so a reorg cannot revert a signed — and bonded — fact. Null when consensus was not reached.",
+      "properties": {
+        "finalized": { "type": "boolean", "description": "A quorum of sources confirm the block is at/under the finalized tag (or >= min confirmations)." },
+        "finalizedBlock": { "type": "integer", "minimum": 0, "description": "Consensus finalized-head block number at issue time." },
+        "confirmations": { "type": "integer", "minimum": 0, "description": "latest head - block number at issue time." }
+      },
+      "required": ["finalized", "finalizedBlock", "confirmations"]
+    },
+    "merkleProof": {
+      "type": ["object", "null"],
+      "description": "Reserved: inclusion proof against the block's transactions trie (RLP-encoded MPT). Null in the MVP; populated in a later phase."
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signer", "scheme", "signature"],
+      "description": "Cryptographic signature over the canonical form of this proof (all fields except `attestation` itself).",
+      "properties": {
+        "signer": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{40}$",
+          "description": "Ethereum address of Tessera's oracle signing key."
+        },
+        "scheme": {
+          "type": "string",
+          "const": "EIP-191",
+          "description": "Signing scheme: EIP-191 personal_sign over the RFC 8785 canonical JSON bytes."
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^0x[0-9a-fA-F]{130}$",
+          "description": "65-byte r||s||v signature, hex. In Phase 0 this is a placeholder zero-signature until the signing key is wired in Phase 1."
+        }
+      }
+    },
+    "bond": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Honesty stake backing this proof (Phase 3). Null when bonding is disabled. contract/stakedUSDC/challengeWindowSec advertise the oracle's standing bond; anchored/anchorTx indicate whether THIS proof was individually committed on-chain (and is thus trustlessly slashable).",
+      "properties": {
+        "contract": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$", "description": "TesseraBond contract address on Base." },
+        "stakedUSDC": { "type": "string", "description": "Oracle's standing bond, decimal string." },
+        "challengeWindowSec": { "type": "integer", "minimum": 0, "description": "Seconds a challenger has to slash an anchored proof." },
+        "proofId": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$", "description": "keccak256 of the canonical proof core (attestation + bond removed); the on-chain anchor key." },
+        "anchored": { "type": "boolean", "description": "Whether this proof was individually anchored on-chain (earmarking part of the standing bond)." },
+        "anchorTx": { "type": ["string", "null"], "pattern": "^0x[0-9a-fA-F]{64}$", "description": "The anchor transaction hash, when anchored." }
+      },
+      "required": ["contract", "stakedUSDC", "challengeWindowSec", "proofId", "anchored"]
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable explanation when `verified` is false (e.g. \"tx not found in claimed block\", \"quorum not reached: 1/3 sources agreed\"). Null on success."
+    },
+    "issuedAt": {
+      "type": "integer",
+      "description": "Unix timestamp (seconds) when the proof was issued and signed."
+    }
+  }
+}

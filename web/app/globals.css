@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  background: #0b0e0c;
+  color: #e8ede9;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+::selection { background: #b6ff3d; color: #0b0e0c; }
+a { color: #b6ff3d; text-decoration: none; }
+a:hover { color: #d6ff8f; }
+input { font-family: 'JetBrains Mono', monospace; outline: none; }
+input::placeholder { color: #4a554d; }
+
+@keyframes tsBlink { 0%,49% { opacity: 1 } 50%,100% { opacity: 0 } }
+@keyframes tsPulse { 0%,100% { opacity: 1; transform: scale(1) } 50% { opacity: .4; transform: scale(.82) } }
+@keyframes tsFlow { 0% { left: 0; opacity: 0 } 8% { opacity: 1 } 92% { opacity: 1 } 100% { left: 100%; opacity: 0 } }
+@keyframes tsDash { to { background-position: -24px 0 } }
+@keyframes tsScan { 0% { transform: translateY(-100%) } 100% { transform: translateY(2600%) } }
+@keyframes tsUp { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }

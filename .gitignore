@@ -1,0 +1,32 @@
+# secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Go
+/agent/bin/
+*.exe
+*.test
+*.out
+
+# Node / Next.js
+node_modules/
+/web/.next/
+/web/out/
+npm-debug.log*
+yarn-error.log*
+
+# Vercel CLI linkage (contains project ids; not secret, but local-only)
+.vercel/
+
+# Foundry
+/contracts/out/
+/contracts/cache/
+/contracts/broadcast/
+# stray Foundry artifacts if forge is ever run from repo root
+/out/
+/cache/
+
+# misc
+.DS_Store
+*.log

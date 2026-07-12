@@ -1,0 +1,17 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+evm_version = "cancun"
+
+# Base mainnet for forking / deploy scripts. Set BASE_RPC_URL in the env.
+[rpc_endpoints]
+base = "${BASE_RPC_URL}"
+
+[etherscan]
+base = { key = "${BASESCAN_API_KEY}", chain = 8453 }
