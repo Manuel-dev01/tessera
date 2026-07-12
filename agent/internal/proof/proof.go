@@ -269,13 +269,29 @@ func writeCanonical(buf *bytes.Buffer, v any) error {
 		buf.WriteByte(']')
 		return nil
 	default:
-		b, err := json.Marshal(val)
+		b, err := marshalNoHTMLEscape(val)
 		if err != nil {
 			return err
 		}
 		buf.Write(b)
 		return nil
 	}
+}
+
+// marshalNoHTMLEscape serializes a scalar without Go's default HTML escaping of
+// <, >, and &. RFC 8785 (and the reference JS `canonicalize`) do NOT escape those,
+// so escaping them here would make the signed preimage diverge from what verifiers
+// recompute — breaking the signature for any proof whose strings contain them
+// (e.g. a reason like "need >= 7").
+func marshalNoHTMLEscape(v any) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	// Encoder.Encode appends a trailing newline; strip it.
+	return bytes.TrimRight(b.Bytes(), "\n"), nil
 }
 
 // String renders the canonical bytes as a string, for logging/debugging.

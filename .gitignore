@@ -25,6 +25,11 @@ yarn-error.log*
 # demo run artifact
 /demo/last-proof.json
 
+# QA sweep workspace (browser binaries reused from elsewhere; outputs are generated)
+/qa/node_modules/
+/qa/shots/
+/qa/report.json
+
 # Foundry
 /contracts/out/
 /contracts/cache/

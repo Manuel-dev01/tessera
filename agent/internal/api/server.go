@@ -319,16 +319,20 @@ func (s *Server) handleAnchor(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadGateway, "anchor failed: "+err.Error())
 		return
 	}
-	// reflect anchored state into the stored proof + response
-	s.markAnchored(body.ProofID, tx)
-	writeJSON(w, http.StatusOK, map[string]any{
+	// reflect anchored state into the stored proof (re-signed) + response
+	updated := s.markAnchored(body.ProofID, tx)
+	resp := map[string]any{
 		"anchorTx": tx,
 		"bond": map[string]any{
 			"contract": s.cfg.BondContract, "stakedUSDC": s.cfg.BondStandingStake,
 			"challengeWindowSec": s.cfg.ChallengeWindowSec, "proofId": body.ProofID,
 			"anchored": true, "anchorTx": tx,
 		},
-	})
+	}
+	if updated != nil {
+		resp["proof"] = updated // re-signed proof, so it still verifies
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleProofs(w http.ResponseWriter, r *http.Request) {
@@ -409,15 +413,25 @@ func (s *Server) find(proofID string) *StoredProof {
 	return nil
 }
 
-func (s *Server) markAnchored(proofID, tx string) {
+// markAnchored records the anchor on the stored proof and RE-SIGNS it. The AVP
+// signature covers the `bond` object (only `attestation` is stripped from the
+// preimage), so flipping anchored/anchorTx without re-signing would invalidate the
+// proof's own signature. Returns the updated, re-signed proof (nil if not found).
+func (s *Server) markAnchored(proofID, tx string) *proof.Proof {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.proofs {
 		if strings.EqualFold(s.proofs[i].ProofID, proofID) && s.proofs[i].Proof.Bond != nil {
 			s.proofs[i].Proof.Bond.Anchored = true
 			s.proofs[i].Proof.Bond.AnchorTx = &tx
+			if err := s.signer.Sign(&s.proofs[i].Proof); err != nil {
+				s.log.Warn("re-sign after anchor failed", "err", err)
+			}
+			p := s.proofs[i].Proof
+			return &p
 		}
 	}
+	return nil
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

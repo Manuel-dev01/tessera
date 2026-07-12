@@ -4,6 +4,7 @@ import Link from "next/link";
 import VerifierSphere from "@/components/VerifierSphere";
 import ProofGraph from "@/components/ProofGraph";
 import { c, mono } from "@/lib/theme";
+import { useNarrow } from "@/lib/useNarrow";
 import * as api from "@/lib/api";
 import { verifyProofSignature } from "@/lib/avp";
 import type { Health, TxPreview, SourceReport, ConsensusSummary, Proof, StoredProof } from "@/lib/types";
@@ -12,6 +13,7 @@ type Stage = "compose" | "consensus" | "proof" | "handoff";
 const ORDER: Stage[] = ["compose", "consensus", "proof", "handoff"];
 
 export default function Console() {
+  const narrow = useNarrow();
   const [health, setHealth] = useState<Health | null>(null);
   const [view, setView] = useState<"pipeline" | "map">("pipeline");
   const [stage, setStage] = useState<Stage>("compose");
@@ -33,7 +35,7 @@ export default function Console() {
   const closer = useRef<(() => void) | undefined>(undefined);
 
   // handoff
-  const [counterparty, setCounterparty] = useState("did:agent:0xB…settlement");
+  const [counterparty, setCounterparty] = useState("");
   const [anchorState, setAnchorState] = useState<"idle" | "anchoring" | "done" | "error">("idle");
   const [anchorTx, setAnchorTx] = useState("");
   const [anchorErr, setAnchorErr] = useState("");
@@ -51,8 +53,13 @@ export default function Console() {
   useEffect(() => () => closer.current?.(), []);
 
   const sources = health?.sources ?? [];
-  const lit = useMemo(() => sources.map((n) => !!reports[n]?.ok && !!reports[n]?.found), [sources, reports]);
-  const foundCount = lit.filter(Boolean).length;
+  // Before the summary, light a source when it has responded+found. Once the
+  // summary resolves, light only the sources that actually AGREED (blockHash
+  // group), so the sphere matches the header's agreed count.
+  const lit = useMemo(() => sources.map((n) =>
+    summary ? !!summary.agreedSources?.includes(n) : (!!reports[n]?.ok && !!reports[n]?.found)
+  ), [sources, reports, summary]);
+  const foundCount = sources.filter((n) => !!reports[n]?.ok && !!reports[n]?.found).length;
 
   const sigCheck = useMemo(() => (proof ? verifyProofSignature(proof) : null), [proof]);
 
@@ -86,16 +93,21 @@ export default function Console() {
 
   async function confirmHandoff() {
     setAnchorErr("");
+    if (!counterparty.trim()) { setAnchorErr("enter a counterparty DID or address"); return; }
     if (health?.bondAnchorReady && proof?.bond?.proofId) {
       setAnchorState("anchoring");
       try {
         const res = await api.anchor(proof.bond.proofId);
         setAnchorTx(res.anchorTx);
-        setProof((p) => (p && p.bond ? { ...p, bond: { ...p.bond, anchored: true, anchorTx: res.anchorTx } } : p));
+        // Replace with the server's re-signed proof so the signature stays valid
+        // (the anchored bond fields are covered by the signature).
+        if (res.proof) setProof(res.proof);
         setAnchorState("done");
       } catch (e: any) { setAnchorErr(e.message || "anchor failed"); setAnchorState("error"); }
     } else {
-      setAnchorState("done"); // export-only handoff
+      // Export-only handoff: actually deliver the signed proof as a file.
+      if (proof) downloadProof(proof);
+      setAnchorState("done");
     }
     api.getProofs().then(setProofs).catch(() => {});
   }
@@ -108,15 +120,15 @@ export default function Console() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* top bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "14px 26px", borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: narrow ? 10 : 20, padding: narrow ? "12px 14px" : "14px 26px", borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <Logo />
           <span style={{ fontFamily: mono, fontWeight: 800, fontSize: 14, letterSpacing: ".22em", paddingLeft: ".22em", color: c.text }}>TESSERA</span>
         </Link>
-        <span style={{ fontFamily: mono, fontSize: 11, color: c.mute }}>console · base · {health?.sourceCount ?? 11} verifiers</span>
+        <span style={{ fontFamily: mono, fontSize: 11, color: c.mute }}>console · base · {health ? `${health.sourceCount} verifiers` : "connecting…"}</span>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 14, fontFamily: mono, fontSize: 12 }}>
           {view === "pipeline" ? (
-            <span onClick={openMap} style={{ cursor: "pointer", color: c.text, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "7px 13px" }}>◇ proof map · {proofs.length || ""} →</span>
+            <span onClick={openMap} style={{ cursor: "pointer", color: c.text, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "7px 13px" }}>◇ proof map{proofs.length ? ` · ${proofs.length}` : ""} →</span>
           ) : (
             <span onClick={() => setView("pipeline")} style={{ cursor: "pointer", color: c.text, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "7px 13px" }}>← pipeline</span>
           )}
@@ -130,7 +142,7 @@ export default function Console() {
       {view === "pipeline" ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {/* stage rail */}
-          <div style={{ display: "flex", alignItems: "center", padding: "22px 30px", borderBottom: `1px solid ${c.border}`, background: c.bg2, fontFamily: mono, fontSize: 12.5 }}>
+          <div style={{ display: "flex", alignItems: "center", padding: narrow ? "16px 14px" : "22px 30px", borderBottom: `1px solid ${c.border}`, background: c.bg2, fontFamily: mono, fontSize: narrow ? 11 : 12.5, overflowX: "auto" }}>
             {ORDER.map((st, i) => (
               <RailStep key={st} label={st.toUpperCase()} idx={i} cur={ORDER.indexOf(stage)} last={i === 3}
                 onClick={() => { if (i <= ORDER.indexOf(stage)) setStage(st); }} />
@@ -142,10 +154,10 @@ export default function Console() {
               <Compose {...{ txHash, setTxHash, onTxBlur, preview, previewErr, claim, setClaim, eventSig, setEventSig, health, runConsensus }} />
             )}
             {stage === "consensus" && (
-              <Consensus {...{ sources, lit, reports, summary, proof, streamErr, elapsed, foundCount, health, proofReady, goCompose: () => setStage("compose"), goProof: () => setStage("proof") }} />
+              <Consensus {...{ sources, lit, reports, summary, proof, streamErr, elapsed, foundCount, health, proofReady, narrow, goCompose: () => setStage("compose"), goProof: () => setStage("proof") }} />
             )}
             {stage === "proof" && proof && (
-              <ProofView {...{ proof, sigCheck, claim, goConsensus: () => setStage("consensus"), goHandoff: () => setStage("handoff") }} />
+              <ProofView {...{ proof, sigCheck, claim, narrow, goConsensus: () => setStage("consensus"), goHandoff: () => setStage("handoff") }} />
             )}
             {stage === "handoff" && proof && (
               <Handoff {...{ proof, counterparty, setCounterparty, anchorState, anchorTx, anchorErr, health, confirmHandoff, goProof: () => setStage("proof"), newVerification, openMap }} />
@@ -153,7 +165,7 @@ export default function Console() {
           </div>
         </div>
       ) : (
-        <MapView {...{ proofs, selectedId, setSelectedId, newVerification }} />
+        <MapView {...{ proofs, selectedId, setSelectedId, newVerification, narrow }} />
       )}
     </div>
   );
@@ -187,7 +199,7 @@ function Compose({ txHash, setTxHash, onTxBlur, preview, previewErr, claim, setC
           <input value={claim} onChange={(e) => setClaim(e.target.value)} placeholder="0x7a3f… received 25000 USDC"
             style={{ width: "100%", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 8, padding: "12px 14px", fontSize: 13, color: c.text }} />
         </Field>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginTop: 6 }}>
           <div style={{ fontFamily: mono, fontSize: 12.5, color: c.mute }}>{health ? `${health.sourceCount} sources online · quorum ${(health.quorumFraction).toFixed(2)} · min ${health.minResponders}` : "…"}</div>
           <div onClick={runConsensus} style={{ cursor: "pointer", fontFamily: mono, fontSize: 13.5, color: c.bg, background: c.accent, padding: "13px 22px", borderRadius: 8, fontWeight: 700 }}>run consensus →</div>
         </div>
@@ -197,20 +209,20 @@ function Compose({ txHash, setTxHash, onTxBlur, preview, previewErr, claim, setC
 }
 
 /* ---------- CONSENSUS ---------- */
-function Consensus({ sources, lit, reports, summary, proof, streamErr, elapsed, foundCount, health, proofReady, goCompose, goProof }: any) {
+function Consensus({ sources, lit, reports, summary, proof, streamErr, elapsed, foundCount, health, proofReady, narrow, goCompose, goProof }: any) {
   const total = sources.length || 11;
   const agreed = summary?.agreed ?? foundCount;
   const quorum = summary?.quorum ?? "…";
-  const pct = Math.round((agreed / total) * 100);
+  const pct = total ? Math.round((agreed / total) * 100) : 0;
   const label = streamErr ? "STREAM ERROR" : proof ? (proof.verified ? `VERIFIED · ${agreed}/${total}` : `RESOLVED · ${agreed}/${total}`) : `FORMING CONSENSUS · ${foundCount}/${total}`;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "420px 1fr", minHeight: 460, animation: "tsUp .3s ease" }}>
-      <div style={{ borderRight: `1px solid ${c.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", background: "radial-gradient(circle at 50% 45%,rgba(182,255,61,.05),transparent 60%)" }}>
-        <VerifierSphere lit={lit} style={{ width: 360, height: 320 }} />
+    <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "420px 1fr", minHeight: 460, animation: "tsUp .3s ease" }}>
+      <div style={{ borderRight: narrow ? "none" : `1px solid ${c.border}`, borderBottom: narrow ? `1px solid ${c.border}` : "none", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", padding: narrow ? "24px 0" : 0, background: "radial-gradient(circle at 50% 45%,rgba(182,255,61,.05),transparent 60%)" }}>
+        <VerifierSphere lit={lit} style={{ width: narrow ? 260 : 360, height: narrow ? 240 : 320 }} />
         <div style={{ fontFamily: mono, fontSize: 12.5, color: proof && !proof.verified ? c.warn : c.accent }}>{label}</div>
         <div style={{ fontFamily: mono, fontSize: 11, color: c.mute, marginTop: 4 }}>elapsed {elapsed.toFixed(1)}s · {total} sources polled</div>
       </div>
-      <div style={{ padding: "34px 36px", minWidth: 0 }}>
+      <div style={{ padding: narrow ? "24px 16px" : "34px 36px", minWidth: 0 }}>
         <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Reaching consensus</div>
         <div style={{ color: c.dim2, fontSize: 13.5, marginBottom: 22 }}>Independent sources attest to the on-chain facts. A proof is signed only once a supermajority agrees and the block is finalized.</div>
         <div style={{ display: "flex", justifyContent: "space-between", fontFamily: mono, fontSize: 12, color: c.mute, marginBottom: 8 }}>
@@ -223,11 +235,22 @@ function Consensus({ sources, lit, reports, summary, proof, streamErr, elapsed, 
           {sources.map((name: string) => {
             const r: SourceReport | undefined = reports[name];
             if (!r) return <div key={name} style={{ color: c.mute, opacity: 0.6 }}>· {name} <span style={{ color: c.warn }}>polling…</span></div>;
-            const good = r.ok && r.found;
+            // Once the consensus summary arrives, agreement is by blockHash group
+            // (agreedSources), not merely "found" — so only agreed sources read
+            // "agreed ✓"; a source that found the tx but on a minority hash reads
+            // "differs". Before the summary, a found source is "responded".
+            const agreedThis = summary?.agreedSources?.some((s: string) => s === name);
+            const statusEl = !r.ok
+              ? <span style={{ color: c.danger }}>timeout ✕</span>
+              : !r.found
+                ? <span style={{ color: c.mute }}>not found ·</span>
+                : summary
+                  ? (agreedThis ? <span style={{ color: c.accent }}>agreed ✓</span> : <span style={{ color: c.warn }}>differs ·</span>)
+                  : <span style={{ color: c.accent }}>responded ✓</span>;
             return (
               <div key={name}>
                 <span style={{ color: c.mute }}>{String(r.ms).padStart(4)}ms</span> {name}{" "}
-                {good ? <span style={{ color: c.accent }}>attested ✓</span> : r.ok ? <span style={{ color: c.mute }}>not found ·</span> : <span style={{ color: c.danger }}>timeout ✕</span>}
+                {statusEl}
               </div>
             );
           })}
@@ -244,21 +267,27 @@ function Consensus({ sources, lit, reports, summary, proof, streamErr, elapsed, 
 }
 
 /* ---------- PROOF ---------- */
-function ProofView({ proof, sigCheck, claim, goConsensus, goHandoff }: { proof: Proof; sigCheck: any; claim: string; goConsensus: () => void; goHandoff: () => void }) {
+function ProofView({ proof, sigCheck, claim, narrow, goConsensus, goHandoff }: { proof: Proof; sigCheck: any; claim: string; narrow?: boolean; goConsensus: () => void; goHandoff: () => void }) {
   const f = proof.finality;
-  const copy = () => navigator.clipboard?.writeText(JSON.stringify(proof, null, 2));
-  const download = () => {
-    const blob = new Blob([JSON.stringify(proof, null, 2)], { type: "application/json" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${shortId(proof.bond?.proofId)}.json`; a.click();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(proof, null, 2));
+      setCopied(true); setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable (insecure context / permission denied) — fall back to a download
+      downloadProof(proof);
+    }
   };
+  const download = () => downloadProof(proof);
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 30px", animation: "tsUp .3s ease" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div><div style={{ fontSize: 20, fontWeight: 600 }}>Resolved proof</div><div style={{ fontFamily: mono, fontSize: 12, color: c.mute, marginTop: 2 }}>AgenticVerificationProof · {proof.schemaVersion}</div></div>
-        <Badge ok={proof.verified} text={proof.verified ? "● VERIFIED" : "● " + (proof.reason ? "UNVERIFIED" : "FALSE")} />
+        <Badge ok={proof.verified} text={proof.verified ? "● VERIFIED" : "● UNVERIFIED"} />
       </div>
       {!proof.verified && proof.reason && <div style={{ background: "rgba(224,192,74,.08)", border: `1px solid ${c.warn}`, color: c.warn, borderRadius: 8, padding: "10px 14px", fontFamily: mono, fontSize: 12.5, marginBottom: 18 }}>reason: {proof.reason}</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 250px", gap: 24, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "1fr 250px", gap: narrow ? 16 : 24, alignItems: "start" }}>
         <div style={{ background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 10, padding: "22px 24px", fontFamily: mono, fontSize: 12.5, lineHeight: 1.9 }}>
           <KV k="issuer" v={proof.attestation.signer} />
           <KV k="claim" v={claim || "—"} dim />
@@ -288,7 +317,7 @@ function ProofView({ proof, sigCheck, claim, goConsensus, goHandoff }: { proof: 
         </div>
       </div>
       <div style={{ display: "flex", gap: 12, marginTop: 18, fontFamily: mono, fontSize: 12.5, flexWrap: "wrap" }}>
-        <Btn onClick={copy}>⧉ copy JSON</Btn>
+        <Btn onClick={copy}>{copied ? "✓ copied" : "⧉ copy JSON"}</Btn>
         <Btn onClick={download}>↓ download</Btn>
         <a href={`https://basescan.org/tx/${proof.txHash}`} target="_blank" rel="noreferrer" style={{ background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "10px 15px", color: c.text }}>↗ view tx on-chain</a>
         <div style={{ flex: 1 }} />
@@ -312,7 +341,7 @@ function Handoff({ proof, counterparty, setCounterparty, anchorState, anchorTx, 
         {anchorTx ? (
           <div style={{ fontFamily: mono, fontSize: 12, marginBottom: 26 }}>anchored on Base · <a href={`https://basescan.org/tx/${anchorTx}`} target="_blank" rel="noreferrer">{anchorTx.slice(0, 18)}… ↗</a></div>
         ) : (
-          <div style={{ fontFamily: mono, fontSize: 12, color: c.mute, marginBottom: 26 }}>exported signed proof (bonding off — set BOND_ENABLED to anchor on-chain)</div>
+          <div style={{ fontFamily: mono, fontSize: 12, color: c.mute, marginBottom: 26 }}>downloaded the signed proof · deliver it to your counterparty</div>
         )}
         <div style={{ display: "flex", gap: 12, justifyContent: "center", fontFamily: mono, fontSize: 12.5 }}>
           <div onClick={newVerification} style={{ cursor: "pointer", color: c.text, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "12px 18px" }}>+ new verification</div>
@@ -331,10 +360,10 @@ function Handoff({ proof, counterparty, setCounterparty, anchorState, anchorTx, 
         {canAnchor ? <>
           <div>contract <span style={{ color: c.text }}>{health.bondContract.slice(0, 16)}…</span></div>
           <div>this proof anchors <span style={{ color: c.accent }}>a slashable stake</span> for {proof.bond.challengeWindowSec}s</div>
-        </> : <div style={{ color: c.mute }}>bonding not configured — handoff will export the signed proof only.</div>}
+        </> : <div style={{ color: c.mute }}>bonding not configured · handoff downloads the signed proof for you to deliver.</div>}
       </div>
       <Field label="COUNTERPARTY DID">
-        <input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} style={{ width: "100%", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 8, padding: "12px 14px", fontSize: 13, color: c.text }} />
+        <input value={counterparty} onChange={(e) => setCounterparty(e.target.value)} placeholder="did:agent:… or 0x…" spellCheck={false} style={{ width: "100%", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 8, padding: "12px 14px", fontSize: 13, color: c.text }} />
       </Field>
       {anchorErr && <div style={{ color: c.danger, fontFamily: mono, fontSize: 12, marginTop: 12 }}>{anchorErr}</div>}
       <div style={{ display: "flex", gap: 12, marginTop: 24, fontFamily: mono, fontSize: 12.5 }}>
@@ -348,8 +377,11 @@ function Handoff({ proof, counterparty, setCounterparty, anchorState, anchorTx, 
 }
 
 /* ---------- MAP ---------- */
-function MapView({ proofs, selectedId, setSelectedId, newVerification }: any) {
+function MapView({ proofs, selectedId, setSelectedId, newVerification, narrow }: any) {
   const sel: StoredProof | undefined = proofs.find((p: StoredProof) => p.proofId === selectedId) || proofs[0];
+  const panelPos: React.CSSProperties = narrow
+    ? { left: 12, right: 12, bottom: 72, width: "auto", maxHeight: "46vh", overflowY: "auto" }
+    : { right: 26, top: 26, width: 320 };
   return (
     <div style={{ flex: 1, position: "relative", overflow: "hidden", background: "radial-gradient(circle at 42% 52%,rgba(182,255,61,.05),transparent 55%)" }}>
       <ProofGraph proofs={proofs} selectedId={selectedId} onSelect={setSelectedId} />
@@ -358,7 +390,7 @@ function MapView({ proofs, selectedId, setSelectedId, newVerification }: any) {
         {proofs.length} proofs · {proofs.filter((p: StoredProof) => !p.verified).length} unresolved<br />click a node to inspect
       </div>
       {sel && (
-        <div style={{ position: "absolute", right: 26, top: 26, width: 320, background: "rgba(18,22,26,.94)", backdropFilter: "blur(8px)", border: `1px solid ${c.accentBorder}`, borderRadius: 12, padding: "20px 22px", boxShadow: "0 16px 50px rgba(0,0,0,.6)" }}>
+        <div style={{ position: "absolute", ...panelPos, background: "rgba(18,22,26,.94)", backdropFilter: "blur(8px)", border: `1px solid ${c.accentBorder}`, borderRadius: 12, padding: "20px 22px", boxShadow: "0 16px 50px rgba(0,0,0,.6)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <span style={{ fontFamily: mono, fontSize: 13.5, color: c.accent }}>{shortId(sel.proofId)}</span>
             <Badge ok={sel.verified} text={sel.verified ? "VERIFIED" : "UNVERIFIED"} small />
@@ -429,3 +461,11 @@ function Btn({ onClick, children }: { onClick: () => void; children: React.React
   return <div onClick={onClick} style={{ cursor: "pointer", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 7, padding: "10px 15px", color: c.text }}>{children}</div>;
 }
 function shortId(id?: string) { return id ? "avp_" + id.replace(/^0x/, "").slice(0, 6) : "avp"; }
+function downloadProof(proof: Proof) {
+  const blob = new Blob([JSON.stringify(proof, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${shortId(proof.bond?.proofId)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}

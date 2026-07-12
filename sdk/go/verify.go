@@ -129,11 +129,16 @@ func writeCanonical(buf *bytes.Buffer, v any) error {
 		buf.WriteByte(']')
 		return nil
 	default:
-		b, err := json.Marshal(val)
-		if err != nil {
+		// RFC 8785 (and the reference JS `canonicalize`) do NOT HTML-escape <, >, &,
+		// so neither may we, or the preimage diverges from the signer's for any proof
+		// whose strings contain them (e.g. a reason "need >= 7").
+		var b bytes.Buffer
+		enc := json.NewEncoder(&b)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(val); err != nil {
 			return err
 		}
-		buf.Write(b)
+		buf.Write(bytes.TrimRight(b.Bytes(), "\n"))
 		return nil
 	}
 }

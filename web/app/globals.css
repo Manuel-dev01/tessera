@@ -4,7 +4,12 @@ html, body {
   background: #0b0e0c;
   color: #e8ede9;
   font-family: 'Space Grotesk', system-ui, sans-serif;
+  /* Safety net: the layouts reflow via the useNarrow hook, but never allow a
+     stray element to introduce horizontal scroll on small screens. */
+  overflow-x: hidden;
+  max-width: 100%;
 }
+img, canvas, svg, pre { max-width: 100%; }
 ::selection { background: #b6ff3d; color: #0b0e0c; }
 a { color: #b6ff3d; text-decoration: none; }
 a:hover { color: #d6ff8f; }

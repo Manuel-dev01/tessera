@@ -1,16 +1,21 @@
+"use client";
 import Link from "next/link";
 import HeroNet from "@/components/HeroNet";
 import { c, mono } from "@/lib/theme";
+import { useNarrow } from "@/lib/useNarrow";
 
 const kicker = { fontFamily: mono, fontSize: 12, letterSpacing: ".2em", color: c.accent, marginBottom: 12 } as const;
 const h2 = { fontSize: 34, fontWeight: 600, letterSpacing: "-.02em", margin: "0 0 6px", maxWidth: 680 } as const;
 const card = { background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 10 } as const;
 
 export default function Landing() {
+  const narrow = useNarrow();
+  const px = narrow ? 16 : 40;
+  const secPad = `${narrow ? 60 : 96}px ${px}px`;
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* left rail */}
-      <div style={{ width: 58, flex: "none", borderRight: `1px solid ${c.border}`, background: c.bg2 }}>
+      <div style={{ width: 58, flex: "none", borderRight: `1px solid ${c.border}`, background: c.bg2, display: narrow ? "none" : "block" }}>
         <div style={{ position: "sticky", top: 0, height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "20px 0" }}>
           <Logo dots />
           <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontFamily: mono, fontSize: 10, letterSpacing: ".4em", color: c.faint2 }}>TESSERA · ORACLE · BASE · 8453</div>
@@ -21,9 +26,9 @@ export default function Landing() {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* topbar */}
-        <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", gap: 26, padding: "16px 40px", background: "rgba(11,14,12,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${c.border}` }}>
-          <div style={{ fontFamily: mono, fontWeight: 800, fontSize: 17, letterSpacing: ".28em", paddingLeft: ".28em" }}>TESSERA</div>
-          <div style={{ display: "flex", gap: 20, fontFamily: mono, fontSize: 12.5, color: c.mute, marginLeft: 8 }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 50, display: "flex", alignItems: "center", gap: narrow ? 12 : 26, padding: narrow ? "12px 16px" : "16px 40px", background: "rgba(11,14,12,.82)", backdropFilter: "blur(10px)", borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ fontFamily: mono, fontWeight: 800, fontSize: narrow ? 15 : 17, letterSpacing: ".28em", paddingLeft: ".28em" }}>TESSERA</div>
+          <div style={{ display: narrow ? "none" : "flex", gap: 20, fontFamily: mono, fontSize: 12.5, color: c.mute, marginLeft: 8 }}>
             <a href="#protocol" style={{ color: c.mute }}>--protocol</a>
             <a href="#proof" style={{ color: c.mute }}>--proof</a>
             <a href="#consensus" style={{ color: c.mute }}>--consensus</a>
@@ -31,7 +36,7 @@ export default function Landing() {
             <Link href="/console" style={{ color: c.mute }}>--console</Link>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: mono, fontSize: 11.5, color: c.mute }}>
+            <span style={{ display: narrow ? "none" : "flex", alignItems: "center", gap: 7, fontFamily: mono, fontSize: 11.5, color: c.mute }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: c.accent, boxShadow: `0 0 7px ${c.accent}`, animation: "tsPulse 2s ease-in-out infinite" }} />ONLINE · base
             </span>
             <Link href="/console" style={{ fontFamily: mono, fontSize: 12, color: c.bg, background: c.accent, padding: "8px 15px", borderRadius: 6, fontWeight: 600 }}>$ open console</Link>
@@ -39,56 +44,56 @@ export default function Landing() {
         </div>
 
         {/* hero */}
-        <section style={{ position: "relative", overflow: "hidden", padding: "78px 40px 96px", minHeight: 600, borderBottom: `1px solid ${c.border}` }}>
+        <section style={{ position: "relative", overflow: "hidden", padding: narrow ? "44px 16px 60px" : "78px 40px 96px", minHeight: 600, borderBottom: `1px solid ${c.border}` }}>
           <HeroNet style={{ position: "absolute", top: -30, right: -120, width: 760, height: 700, pointerEvents: "none", opacity: 0.95 }} />
           <div style={{ position: "absolute", top: -30, right: -120, width: 760, height: 700, background: "radial-gradient(circle at 62% 46%,rgba(182,255,61,.06),transparent 55%)", pointerEvents: "none" }} />
           <div style={{ position: "relative", maxWidth: 680 }}>
             <div style={{ fontFamily: mono, fontSize: 12, letterSpacing: ".24em", color: c.mute, marginBottom: 26 }}>AGENTIC VERIFICATION ORACLE · CAP PROVIDER · BASE</div>
-            <h1 style={{ fontSize: 64, lineHeight: 1.03, fontWeight: 700, letterSpacing: "-.028em", margin: 0 }}>
+            <h1 style={{ fontSize: narrow ? 38 : 64, lineHeight: 1.05, fontWeight: 700, letterSpacing: "-.028em", margin: 0 }}>
               Turn an on-chain event into a <span style={{ color: c.accent }}>signed proof</span> another agent can trust.
             </h1>
             <p style={{ fontSize: 18, lineHeight: 1.55, color: c.dim, maxWidth: 560, margin: "26px 0 0" }}>
               Tessera is a paid, callable CAP provider on Base. Agents hire it to verify that a specific event occurred — it reaches consensus and returns a cryptographically signed <b style={{ color: c.text }}>AgenticVerificationProof</b>, one proof-half ready to hand off as trustless evidence.
             </p>
-            <div style={{ marginTop: 34, display: "inline-flex", alignItems: "center", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 9, padding: "14px 18px", fontFamily: mono, fontSize: 14.5, boxShadow: "0 8px 30px rgba(0,0,0,.4)" }}>
+            <div style={{ marginTop: 34, display: "inline-flex", flexWrap: "wrap", alignItems: "center", maxWidth: "100%", background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 9, padding: narrow ? "12px 14px" : "14px 18px", fontFamily: mono, fontSize: narrow ? 12 : 14.5, boxShadow: "0 8px 30px rgba(0,0,0,.4)" }}>
               <span style={{ color: c.accent }}>agent@base</span><span style={{ color: c.mute }}>:~$</span>&nbsp;<span style={{ color: c.text }}>tessera.verify(&#123; event, tx &#125;)</span>&nbsp;<span style={{ color: c.mute }}>→</span>&nbsp;<span style={{ color: c.accent }}>AVP‹v1›</span>
               <span style={{ display: "inline-block", width: 9, height: 17, background: c.accent, marginLeft: 5, animation: "tsBlink 1.1s step-end infinite" }} />
             </div>
-            <div style={{ display: "flex", gap: 34, marginTop: 38, fontFamily: mono }}>
-              <Readout v="9/11" label="median consensus" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: narrow ? 18 : 34, marginTop: 38, fontFamily: mono }}>
+              <Readout v="11/11" label="sources agreed" />
               <div style={{ width: 1, background: c.border }} />
-              <Readout v="~1.4s" label="time to proof" />
+              <Readout v="~4s" label="time to proof" />
               <div style={{ width: 1, background: c.border }} />
-              <Readout v="0.002 ETH" label="per call" accent />
+              <Readout v="0.005 USDC" label="per call" accent />
             </div>
           </div>
         </section>
 
         {/* 01 protocol */}
-        <section id="protocol" style={{ padding: "96px 40px", borderBottom: `1px solid ${c.border}` }}>
+        <section id="protocol" style={{ padding: secPad, borderBottom: `1px solid ${c.border}` }}>
           <div style={kicker}>// 01 — PROTOCOL</div>
           <h2 style={h2}>A proof-half travels between two agents.</h2>
           <p style={{ color: c.dim, maxWidth: 600, margin: "0 0 60px", fontSize: 16, lineHeight: 1.55 }}>
             One agent calls. Tessera runs consensus across independent verifiers. The signed AVP half is returned to the caller — evidence a counterparty can independently validate.
           </p>
-          <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr", alignItems: "center", maxWidth: 1000 }}>
-            <div style={{ position: "absolute", left: "12%", right: "12%", top: "50%", height: 2, background: `repeating-linear-gradient(90deg,${c.border2} 0 8px,transparent 8px 16px)`, backgroundSize: "16px 2px", animation: "tsDash 1.4s linear infinite" }} />
-            <AgentCard role="CALLER" name="Agent A" note={<>needs proof that<br />an event occurred</>} align="start" />
+          <div style={{ position: "relative", display: "grid", gridTemplateColumns: narrow ? "1fr" : "1fr 1.4fr 1fr", gap: narrow ? 16 : 0, alignItems: "center", maxWidth: 1000 }}>
+            <div style={{ display: narrow ? "none" : "block", position: "absolute", left: "12%", right: "12%", top: "50%", height: 2, background: `repeating-linear-gradient(90deg,${c.border2} 0 8px,transparent 8px 16px)`, backgroundSize: "16px 2px", animation: "tsDash 1.4s linear infinite" }} />
+            <AgentCard role="CALLER" name="Agent A" note={<>needs proof that<br />an event occurred</>} align="start" narrow={narrow} />
             <div style={{ justifySelf: "center", background: "linear-gradient(#12161a,#0e1210)", border: `1px solid ${c.accentBorder}`, borderRadius: 12, padding: "22px 26px", textAlign: "center", boxShadow: "0 0 40px rgba(182,255,61,.08)", position: "relative", zIndex: 2 }}>
               <div style={{ margin: "0 auto 10px", width: "fit-content" }}><Logo big /></div>
               <div style={{ fontFamily: mono, fontWeight: 700, letterSpacing: ".18em", fontSize: 13 }}>TESSERA</div>
-              <div style={{ fontSize: 12, color: c.accent, fontFamily: mono, marginTop: 6 }}>consensus · 9/11</div>
+              <div style={{ fontSize: 12, color: c.accent, fontFamily: mono, marginTop: 6 }}>consensus · 11/11</div>
               <div style={{ fontSize: 11.5, color: c.mute, marginTop: 2 }}>signs AVP‹v1›</div>
             </div>
-            <AgentCard role="COUNTERPARTY" name="Agent B" note={<>validates the<br />signed half</>} align="end" />
+            <AgentCard role="COUNTERPARTY" name="Agent B" note={<>validates the<br />signed half</>} align="end" narrow={narrow} />
           </div>
         </section>
 
         {/* 02 proof */}
-        <section id="proof" style={{ padding: "96px 40px", borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
+        <section id="proof" style={{ padding: secPad, borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
           <div style={kicker}>// 02 — THE PROOF</div>
           <h2 style={{ ...h2, margin: "0 0 50px" }}>One object. Signed, consensus-backed, machine-readable.</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,620px) 340px", gap: 44, alignItems: "start", maxWidth: 1060 }}>
+          <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "minmax(0,620px) 340px", gap: narrow ? 22 : 44, alignItems: "start", maxWidth: 1060 }}>
             <div style={{ ...card, overflow: "hidden", position: "relative" }}>
               <div style={{ position: "absolute", left: 0, right: 0, height: 44, background: "linear-gradient(#b6ff3d,transparent)", opacity: 0.04, animation: "tsScan 6s linear infinite", pointerEvents: "none" }} />
               <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "13px 16px", borderBottom: `1px solid ${c.border2}`, fontFamily: mono, fontSize: 11.5, color: c.mute }}>
@@ -121,7 +126,7 @@ export default function Landing() {
         </section>
 
         {/* 03 consensus */}
-        <section id="consensus" style={{ padding: "96px 40px", borderBottom: `1px solid ${c.border}` }}>
+        <section id="consensus" style={{ padding: secPad, borderBottom: `1px solid ${c.border}` }}>
           <div style={kicker}>// 03 — CONSENSUS</div>
           <h2 style={h2}>No single node is trusted. The threshold is.</h2>
           <p style={{ color: c.dim, maxWidth: 600, margin: "0 0 46px", fontSize: 16, lineHeight: 1.55 }}>
@@ -135,7 +140,7 @@ export default function Landing() {
             ))}
           </div>
           <div style={{ maxWidth: 560 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: mono, fontSize: 12, color: c.mute, marginBottom: 8 }}><span>ATTESTATION THRESHOLD</span><span><b style={{ color: c.accent }}>9</b> / 11 · min 7</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: mono, fontSize: 12, color: c.mute, marginBottom: 8 }}><span>QUORUM THRESHOLD</span><span>quorum <b style={{ color: c.accent }}>9</b> / 11 · min 7</span></div>
             <div style={{ height: 10, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 6, overflow: "hidden", display: "flex" }}>
               <div style={{ width: "81.8%", background: `linear-gradient(90deg,${c.accentDim},${c.accent})` }} />
             </div>
@@ -144,11 +149,11 @@ export default function Landing() {
         </section>
 
         {/* 04 callable */}
-        <section id="callable" style={{ padding: "96px 40px", borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
+        <section id="callable" style={{ padding: secPad, borderBottom: `1px solid ${c.border}`, background: c.bg2 }}>
           <div style={kicker}>// 04 — CALLABLE</div>
           <h2 style={h2}>Metered. Pay per verification.</h2>
           <p style={{ color: c.dim, maxWidth: 580, margin: "0 0 48px", fontSize: 16, lineHeight: 1.55 }}>Install the SDK, point it at Base, and call. You're billed only for proofs that resolve.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 320px", gap: 32, alignItems: "stretch", maxWidth: 1060 }}>
+          <div style={{ display: "grid", gridTemplateColumns: narrow ? "1fr" : "minmax(0,1fr) 320px", gap: narrow ? 18 : 32, alignItems: "stretch", maxWidth: 1060 }}>
             <div style={{ ...card, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "12px 16px", borderBottom: `1px solid ${c.border2}` }}>
                 {[0, 1, 2].map((i) => <span key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: c.border2 }} />)}
@@ -171,7 +176,7 @@ proof.consensus;             // { agreed: 11, quorum: 9 }`}
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: c.panel, border: `1px solid ${c.accentBorder}`, borderRadius: 10, padding: 24 }}>
                 <div style={{ fontFamily: mono, fontSize: 11, color: c.mute, letterSpacing: ".12em" }}>PER RESOLVED PROOF</div>
-                <div style={{ fontFamily: mono, fontSize: 38, fontWeight: 700, color: c.accent, marginTop: 8 }}>0.002<span style={{ fontSize: 16, color: c.mute }}> ETH</span></div>
+                <div style={{ fontFamily: mono, fontSize: 38, fontWeight: 700, color: c.accent, marginTop: 8 }}>0.005<span style={{ fontSize: 16, color: c.mute }}> USDC</span></div>
                 <div style={{ fontSize: 13, color: c.dim, marginTop: 6, lineHeight: 1.5 }}>no charge for calls that fail to reach threshold.</div>
               </div>
               <div style={{ background: c.panel2, border: `1px solid ${c.border3}`, borderRadius: 10, padding: 20, fontSize: 13, color: c.dim, lineHeight: 1.7 }}>
@@ -184,16 +189,16 @@ proof.consensus;             // { agreed: 11, quorum: 9 }`}
         </section>
 
         {/* CTA */}
-        <section style={{ padding: "110px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <section style={{ padding: narrow ? "70px 16px" : "110px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%,rgba(182,255,61,.07),transparent 60%)", pointerEvents: "none" }} />
           <div style={{ position: "relative" }}>
-            <h2 style={{ fontSize: 48, fontWeight: 700, letterSpacing: "-.028em", margin: "0 0 24px" }}>Hire the oracle.</h2>
+            <h2 style={{ fontSize: narrow ? 32 : 48, fontWeight: 700, letterSpacing: "-.028em", margin: "0 0 24px" }}>Hire the oracle.</h2>
             <Link href="/console" style={{ display: "inline-block", color: c.bg, background: c.accent, padding: "14px 28px", borderRadius: 8, fontFamily: mono, fontWeight: 600, fontSize: 14 }}>$ open console →</Link>
           </div>
         </section>
 
         {/* footer — implementation ends here */}
-        <footer style={{ borderTop: `1px solid ${c.border}`, padding: "34px 40px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", fontFamily: mono, fontSize: 12, color: c.mute }}>
+        <footer style={{ borderTop: `1px solid ${c.border}`, padding: narrow ? "28px 16px" : "34px 40px", display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", fontFamily: mono, fontSize: 12, color: c.mute }}>
           <span style={{ fontWeight: 800, letterSpacing: ".24em", color: c.text }}>TESSERA</span>
           <span style={{ color: c.faint2 }}>·</span><span>agentic verification oracle</span>
           <span style={{ marginLeft: "auto", display: "flex", gap: 20 }}>
@@ -225,9 +230,9 @@ function Readout({ v, label, accent }: { v: string; label: string; accent?: bool
     </div>
   );
 }
-function AgentCard({ role, name, note, align }: { role: string; name: string; note: React.ReactNode; align: "start" | "end" }) {
+function AgentCard({ role, name, note, align, narrow }: { role: string; name: string; note: React.ReactNode; align: "start" | "end"; narrow?: boolean }) {
   return (
-    <div style={{ justifySelf: align, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 10, padding: "20px 22px", width: 230, position: "relative", zIndex: 2 }}>
+    <div style={{ justifySelf: narrow ? "stretch" : align, background: c.panel, border: `1px solid ${c.border2}`, borderRadius: 10, padding: "20px 22px", width: narrow ? "100%" : 230, position: "relative", zIndex: 2 }}>
       <div style={{ fontFamily: mono, fontSize: 11, color: c.mute }}>{role}</div>
       <div style={{ fontSize: 19, fontWeight: 600, marginTop: 4 }}>{name}</div>
       <div style={{ fontFamily: mono, fontSize: 11.5, color: c.mute, marginTop: 8 }}>{note}</div>
