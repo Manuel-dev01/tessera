@@ -23,6 +23,11 @@ set -euo pipefail
 KEYS_FILE="${1:?usage: buyers-fanout.sh <keys-file> [orders-per-buyer]}"
 ORDERS_PER_BUYER="${2:-2}"
 
+# Resolve the keys file to an absolute path BEFORE we cd into agent/, so a
+# relative path passed from the repo root still resolves.
+[[ -f "$KEYS_FILE" ]] || { echo "keys file not found: $KEYS_FILE" >&2; exit 1; }
+KEYS_FILE="$(cd "$(dirname "$KEYS_FILE")" && pwd)/$(basename "$KEYS_FILE")"
+
 # Resolve the agent directory (this script lives in demo/).
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT_DIR="$(cd "$HERE/.." && pwd)/agent"
