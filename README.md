@@ -44,7 +44,7 @@ from a signed confirmation.
 
 ## Quick start
 
-Three ways to reproduce the system, ordered by setup cost. The first needs
+Two ways to reproduce the system, ordered by setup cost. The first needs
 nothing but Node.
 
 ### 1. Verify a live proof with the published SDK
@@ -74,24 +74,7 @@ console.log("inclusion:", (await verifyInclusion(proof)).ok); // checks the trie
 network access. `verifyInclusion` checks the transactions-trie proof. Both return
 `true` for a genuine proof and `false` for any tampered field.
 
-### 2. One-command end-to-end demo
-
-Clone the repo and run the demo script. It drives the live oracle through a full
-verification and then verifies the result independently. No credentials.
-
-```bash
-git clone https://github.com/Manuel-dev01/tessera && cd tessera
-./demo/demo.sh                 # auto-picks a finalized Base transaction
-./demo/demo.sh 0x<base-tx>     # or verify a specific one
-```
-
-It prints the oracle health, the signed proof (consensus, finality, inclusion
-proof, bond, signature), and a final independent check that reads
-`signature: VALID` and `inclusion: VALID`. See [DEMO.md](DEMO.md) for four more
-ways to run it, including the offline CAP round-trip and the live agent-to-agent
-hire.
-
-### 3. Run the full stack locally
+### 2. Run the full stack locally
 
 Two processes: the Go verification API and the Next.js web app.
 
@@ -224,7 +207,6 @@ sdk/        Reference verifiers: JS @olanuel-tessera/avp and Go
 agent/      Go CAP provider and console API: consensus, signing, bond client, merkle prover, watchtower
 contracts/  Foundry project: TesseraBond.sol with the standing bond and EIP-2935 slashing
 web/        Next.js landing page and operator console, wired to the agent
-demo/       One-command end-to-end demo script
 ```
 
 ## Build status

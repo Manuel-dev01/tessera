@@ -22,13 +22,12 @@ yarn-error.log*
 # SDK build output
 /sdk/js/dist/
 
-# demo run artifact
-/demo/last-proof.json
-
-# QA sweep workspace (browser binaries reused from elsewhere; outputs are generated)
-/qa/node_modules/
-/qa/shots/
-/qa/report.json
+# not part of the build (kept locally, out of the submission repo)
+/CLAUDE.md
+/DEMO.md
+*.dc.html
+/qa/
+/demo/
 
 # Foundry
 /contracts/out/
