@@ -1,4 +1,4 @@
-# @tessera/avp
+# @olanuel-tessera/avp
 
 Verify an **AgenticVerificationProof v1** (AVP) — the signed, consensus-backed
 on-chain fact receipt issued by [Tessera](https://github.com/Manuel-dev01/tessera).
@@ -9,13 +9,13 @@ A valid signature vouches for **every** field — including a `verified: false`
 verdict, which is an equally trustworthy, first-class result.
 
 ```bash
-npm install @tessera/avp
+npm install @olanuel-tessera/avp
 ```
 
 ## Verify in 3 lines
 
 ```ts
-import { verifyAVP } from "@tessera/avp";
+import { verifyAVP } from "@olanuel-tessera/avp";
 
 const { ok, recovered, signer } = verifyAVP(proof);
 if (ok) console.log(`signer ${signer} vouches for this fact`);

@@ -7,7 +7,7 @@ is reproduced identically across implementations.
 
 | Package | Path | Install |
 |---|---|---|
-| JavaScript / TypeScript | [`js/`](js/) — `@tessera/avp` | `npm install @tessera/avp` |
+| JavaScript / TypeScript | [`js/`](js/) — `@olanuel-tessera/avp` | `npm install @olanuel-tessera/avp` |
 | Go | [`go/`](go/) — `github.com/Manuel-dev01/tessera/sdk/go` | `go get github.com/Manuel-dev01/tessera/sdk/go` |
 
 ## Why an SDK
@@ -26,12 +26,12 @@ verdict. See the [spec](../schema/agentic-verification-proof-v1.md).
 ## JS
 
 ```ts
-import { verifyAVP } from "@tessera/avp";
+import { verifyAVP } from "@olanuel-tessera/avp";
 const { ok, signer } = verifyAVP(proof);
 
 // optional: verify the transactions-trie inclusion proof (separate entry point
 // so the core stays free of the trie dependency)
-import { verifyInclusion } from "@tessera/avp/inclusion";
+import { verifyInclusion } from "@olanuel-tessera/avp/inclusion";
 const incl = await verifyInclusion(proof); // pass { trustedRoot } for a trustless check
 ```
 

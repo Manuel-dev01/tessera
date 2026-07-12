@@ -16,7 +16,7 @@ agent-to-agent hire. Pick by how much you want to stand up.
 ## A. One-command end-to-end (the video centerpiece)
 
 No credentials. Drives the **live deployed oracle** through a real verification,
-then verifies the returned proof independently with the `@tessera/avp` SDK.
+then verifies the returned proof independently with the `@olanuel-tessera/avp` SDK.
 
 ```bash
 ./demo/demo.sh                 # auto-picks a finalized Base tx
@@ -72,8 +72,8 @@ to the DID. Cost: the service price (0.005 USDC); gas is sponsored by CROO.
 Any agent can verify an AVP with nothing but the proof JSON. See [`sdk/`](sdk/).
 
 ```ts
-import { verifyAVP } from "@tessera/avp";
-import { verifyInclusion } from "@tessera/avp/inclusion";
+import { verifyAVP } from "@olanuel-tessera/avp";
+import { verifyInclusion } from "@olanuel-tessera/avp/inclusion";
 const { ok, signer } = verifyAVP(proof);         // EIP-191 signer recovery
 const incl = await verifyInclusion(proof);        // transactions-trie inclusion
 ```
@@ -121,4 +121,4 @@ cd agent && BOND_CONTRACT=<addr> BASE_RPC_URLS=http://127.0.0.1:8545 \
 3. **The independent verify** — `signature: VALID / inclusion: VALID`. No trust in
    Tessera.
 4. **The bond** — show the Base slashing tx; fraud dies in one block.
-5. **The standard** — `npm install @tessera/avp`; it's infrastructure, not an app.
+5. **The standard** — `npm install @olanuel-tessera/avp`; it's infrastructure, not an app.

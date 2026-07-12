@@ -1,5 +1,5 @@
 {
-  "name": "@tessera/avp",
+  "name": "@olanuel-tessera/avp",
   "version": "1.0.0",
   "description": "Verify an AgenticVerificationProof (AVP) — the signed, consensus-backed on-chain fact receipt from Tessera. RFC-8785 canonical JSON + EIP-191 signer recovery.",
   "keywords": [

@@ -117,7 +117,7 @@ casing. Two levels of trust:
   proven with no trust in the oracle at all.
 
 Reference verifiers ship in [`../sdk`](../sdk): Go `avp.VerifyInclusion(...)` and
-JS `import { verifyInclusion } from "@tessera/avp/inclusion"`.
+JS `import { verifyInclusion } from "@olanuel-tessera/avp/inclusion"`.
 
 ## Signing scheme
 
@@ -165,7 +165,7 @@ export function verifyAVP(proof) {
 If `verifyAVP(proof)` returns `true`, the `signer` address vouches for every other field
 in the proof — including a `verified: false` verdict.
 
-> Reference verifiers for JS (`@tessera/avp`) and Go (`github.com/Manuel-dev01/tessera/sdk/go`)
+> Reference verifiers for JS (`@olanuel-tessera/avp`) and Go (`github.com/Manuel-dev01/tessera/sdk/go`)
 > live in [`../sdk`](../sdk). Both are tested against a real oracle-signed proof, proving the
 > canonical byte form reproduces identically across implementations.
 

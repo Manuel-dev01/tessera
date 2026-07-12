@@ -36,3 +36,6 @@ yarn-error.log*
 # misc
 .DS_Store
 *.log
+
+# npm auth (env-referencing; no secret, local only)
+/sdk/js/.npmrc

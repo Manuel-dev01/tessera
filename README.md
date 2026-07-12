@@ -38,7 +38,7 @@ not a Tessera-only format. See [`schema/`](schema/):
 
 ```
 schema/     AgenticVerificationProof v1 — the open standard
-sdk/        Reference verifiers (JS `@tessera/avp` + Go) — "verify a proof in 3 lines"
+sdk/        Reference verifiers (JS `@olanuel-tessera/avp` + Go) — "verify a proof in 3 lines"
 agent/      Go CAP provider + console-api (verification core, consensus, signing, bond client, watchtower)
 contracts/  Foundry: TesseraBond.sol + tests (standing bond + EIP-2935 trustless slashing)
 web/        Next.js landing page + operator console (fully wired to the agent)
@@ -52,8 +52,8 @@ proof JSON — they recompute the RFC 8785 canonical bytes and recover the EIP-1
 signer. Both are tested against the *same real proof signed by the live oracle*.
 
 ```ts
-// JavaScript / TypeScript — npm install @tessera/avp
-import { verifyAVP } from "@tessera/avp";
+// JavaScript / TypeScript — npm install @olanuel-tessera/avp
+import { verifyAVP } from "@olanuel-tessera/avp";
 const { ok, signer } = verifyAVP(proof);   // ok === true → `signer` vouches for every field
 ```
 

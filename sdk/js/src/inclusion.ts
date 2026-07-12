@@ -2,7 +2,7 @@ import { MerklePatriciaTrie, verifyMPTWithMerkleProof } from "@ethereumjs/mpt";
 import { hexToBytes } from "@ethereumjs/util";
 import { keccak256 } from "ethers";
 
-// This module is a SEPARATE entry point (`@tessera/avp/inclusion`) so the core
+// This module is a SEPARATE entry point (`@olanuel-tessera/avp/inclusion`) so the core
 // signature verifier stays free of the Merkle-Patricia trie dependency. Import it
 // only when you need to check the transactions-trie inclusion proof.
 
