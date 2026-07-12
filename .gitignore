@@ -38,6 +38,10 @@ yarn-error.log*
 /out/
 /cache/
 
+# buyer SDK keys for the A2A fan-out (one per line; never commit)
+/agent/buyers.txt
+/demo/buyers.txt
+
 # misc
 .DS_Store
 *.log
