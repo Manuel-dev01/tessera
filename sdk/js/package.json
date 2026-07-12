@@ -1,0 +1,34 @@
+{
+  "name": "@tessera/avp",
+  "version": "1.0.0",
+  "description": "Verify an AgenticVerificationProof (AVP) — the signed, consensus-backed on-chain fact receipt from Tessera. RFC-8785 canonical JSON + EIP-191 signer recovery.",
+  "keywords": ["tessera", "avp", "agent", "oracle", "eip-191", "base", "croo", "verification", "proof"],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "canonicalize": "^2.0.0",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

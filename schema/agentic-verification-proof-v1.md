@@ -135,6 +135,10 @@ export function verifyAVP(proof) {
 If `verifyAVP(proof)` returns `true`, the `signer` address vouches for every other field
 in the proof — including a `verified: false` verdict.
 
+> Reference verifiers for JS (`@tessera/avp`) and Go (`github.com/Manuel-dev01/tessera/sdk/go`)
+> live in [`../sdk`](../sdk). Both are tested against a real oracle-signed proof, proving the
+> canonical byte form reproduces identically across implementations.
+
 ## Versioning
 
 Breaking changes bump the tag (`avp/2.0`, …). Additive, backward-compatible fields may be

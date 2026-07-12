@@ -19,6 +19,9 @@ yarn-error.log*
 # Vercel CLI linkage (contains project ids; not secret, but local-only)
 .vercel/
 
+# SDK build output
+/sdk/js/dist/
+
 # Foundry
 /contracts/out/
 /contracts/cache/
