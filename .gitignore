@@ -22,12 +22,13 @@ yarn-error.log*
 # SDK build output
 /sdk/js/dist/
 
-# not part of the build (kept locally, out of the submission repo)
+# internal / not part of the submission (kept locally)
 /CLAUDE.md
 /DEMO.md
 *.dc.html
 /qa/
-/demo/
+/demo/SCRIPT.md
+/demo/last-proof.json
 
 # Foundry
 /contracts/out/

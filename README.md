@@ -4,18 +4,34 @@
 
 [![CI](https://github.com/Manuel-dev01/tessera/actions/workflows/ci.yml/badge.svg)](https://github.com/Manuel-dev01/tessera/actions/workflows/ci.yml)
 
+**▶ Watch the demo:** https://www.youtube.com/watch?v=2f5mS_z1aR8
+
 Tessera is an agent-native on-chain data verification oracle. It runs as a paid,
-callable service on **Base**: another agent hires it to confirm that a specific
-on-chain event occurred, and it returns a consensus-backed, cryptographically
-signed **AgenticVerificationProof (AVP)**. That proof is the machine-verifiable
-receipt one agent hands another as trustless evidence of an on-chain fact.
+callable service on **Base**: one autonomous agent hires it to confirm that a
+specific on-chain event occurred, and it returns a consensus-backed,
+cryptographically signed **AgenticVerificationProof (AVP)**. That proof is the
+machine-verifiable receipt one agent hands another as trustless evidence of an
+on-chain fact. The counterparty verifies it locally, in a few lines of code,
+with no call back to Tessera and no trust in Tessera required.
 
 A *tessera hospitalis* was a token split between two parties in the Roman world,
 where each half proved the bond was real. Tessera issues the digital equivalent.
 
 Built for the CROO Agent Hackathon.
 
-**▶ Watch the demo:** https://www.youtube.com/watch?v=2f5mS_z1aR8
+## Contents
+
+- [Live](#live)
+- [Try it in two minutes](#try-it-in-two-minutes)
+- [How it works](#how-it-works)
+- [Architecture](#architecture)
+- [The AgenticVerificationProof](#the-agenticverificationproof)
+- [Verify a proof yourself](#verify-a-proof-yourself)
+- [Run it locally](#run-it-locally)
+- [Project structure](#project-structure)
+- [Build status](#build-status)
+- [Deployment and CI](#deployment-and-ci)
+- [Security](#security)
 
 ## Live
 
@@ -27,8 +43,62 @@ Built for the CROO Agent Hackathon.
 | Verification API | https://tessera-api-production-2b6c.up.railway.app |
 | npm package | [`@olanuel-tessera/avp`](https://www.npmjs.com/package/@olanuel-tessera/avp) |
 | Go package | `github.com/Manuel-dev01/tessera/sdk/go` |
+| TesseraBond (Base) | [`0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85`](https://basescan.org/address/0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85) |
 
-## What it does
+## Try it in two minutes
+
+Three ways, from zero setup to a full local stack. Start with A.
+
+### A. Drive the live console (no setup)
+
+1. Open the console: **https://tessera-console.vercel.app/console**
+2. In **TX HASH**, paste any recent successful Base transaction. If you need one,
+   grab a Transfer from [Basescan](https://basescan.org), or run
+   `./demo/pick-tx.sh` to print a ready one (finalized, successful, and recent
+   enough to carry a merkle proof).
+3. Click **run consensus**. Watch the 11 independent sources attest live and the
+   quorum resolve.
+4. Click **view proof**. You now have a signed AVP. Look for the green
+   **signature verified in-browser** line: your browser recovered the oracle's
+   address from the signature locally, with no call back to Tessera.
+5. Optional: **hand off** the proof to anchor it on-chain against the honesty
+   bond, then open the **proof map**.
+
+> The console verifies real Base transactions against the live oracle. A proof
+> is only marked verified when a supermajority of sources agree and the block is
+> finalized, so freshly-mined (not-yet-final) transactions return a signed
+> `verified: false`, which is itself a valid result.
+
+### B. One command, end to end
+
+Drives the live oracle through a full verification and then verifies the returned
+proof independently with the SDK. No credentials.
+
+```bash
+git clone https://github.com/Manuel-dev01/tessera && cd tessera
+./demo/demo.sh                 # auto-picks a finalized Base transaction
+./demo/demo.sh 0x<base-tx>     # or verify a specific one
+```
+
+It prints the oracle health, the signed proof (consensus, finality, inclusion
+proof, bond, signature), and a final independent check that reads
+`signature: VALID` and `inclusion: VALID`.
+
+### C. Verify a proof with the published SDK
+
+```bash
+npm install @olanuel-tessera/avp
+```
+
+```js
+import { verifyAVP } from "@olanuel-tessera/avp";
+import { verifyInclusion } from "@olanuel-tessera/avp/inclusion";
+
+const { ok, signer } = verifyAVP(proof);        // recovers the EIP-191 signer, no network
+const inclusion = await verifyInclusion(proof);  // checks the transactions-trie proof
+```
+
+## How it works
 
 A caller submits a transaction to check:
 
@@ -36,64 +106,60 @@ A caller submits a transaction to check:
 { "chainId": 8453, "address": "0x...", "txHash": "0x...", "blockNumber": 12345 }
 ```
 
-Tessera queries eleven independent, method-diverse data sources at once, requires
-a supermajority to agree, confirms the block is finalized, and returns a signed
-AVP. The proof states whether the fact is true, records the consensus and
-finality that back it, carries a transactions-trie inclusion proof, advertises an
-on-chain honesty bond, and is signed so any counterparty can verify it without
-trusting Tessera. A signed negative (`verified: false`) is a first-class result:
-a caller learns as much from a signed "this transaction is not in that block" as
-from a signed confirmation.
+Tessera then does five things, each in service of one principle: **verification
+must not require trusting the verifier.**
 
-## Quick start
+- **Multi-source consensus.** It queries 11 independent, method-diverse sources
+  at once (10 distinct-operator Base RPC endpoints plus a block-explorer indexer)
+  and signs only when a dynamic supermajority agrees on the block and status. No
+  single node is a point of trust.
+- **Finality gate.** It signs `verified: true` only after the block is finalized,
+  so a reorg can never quietly undo a signed fact.
+- **EIP-191 signature.** The proof is signed over its RFC 8785 canonical form.
+  Any verifier recomputes the same bytes and recovers the signer locally.
+- **Transactions-trie inclusion proof.** The proof carries a Merkle-Patricia
+  inclusion proof, standalone cryptographic evidence that the transaction sits at
+  its index in the block, checkable against the block header itself.
+- **On-chain honesty bond.** High-value proofs are anchored to a USDC stake in
+  `TesseraBond`. Anyone can challenge a fraudulent proof and the stake is slashed
+  to them, with no oracle and no arbiter.
 
-Two ways to reproduce the system, ordered by setup cost. The first needs
-nothing but Node.
+A signed negative (`verified: false`) is a first-class result: a caller learns as
+much from a signed "this transaction is not in that block" as from a confirmation.
 
-### 1. Verify a live proof with the published SDK
+## Architecture
 
-```bash
-mkdir tessera-check && cd tessera-check && npm init -y >/dev/null
-npm install @olanuel-tessera/avp
+```
+   caller agent
+        │  hires (over CAP)  /  POST verify
+        ▼
+┌─────────────────────── Tessera provider (Go) ───────────────────────┐
+│                                                                      │
+│  consensus engine ──▶ 11 sources ──▶ Base RPCs + explorer            │
+│        │  agreed (blockHash, status)                                 │
+│        ▼                                                             │
+│  finality gate ─────▶ requires block ≤ finalized                     │
+│        ▼                                                             │
+│  verify + sign ─────▶ EIP-191 over RFC 8785 canonical JSON           │
+│        ▼                                                             │
+│  merkle prover ─────▶ transactions-trie inclusion proof              │
+│        ▼                                                             │
+│  bond client ───────▶ anchor to TesseraBond (Base)                   │
+│        ▼                                                             │
+│  AgenticVerificationProof (signed)                                   │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │ hand off
+                               ▼
+                       counterparty agent
+                  verifies locally (SDK / in-browser),
+                  no trust in Tessera
 ```
 
-```js
-// check.mjs
-import { verifyAVP } from "@olanuel-tessera/avp";
-import { verifyInclusion } from "@olanuel-tessera/avp/inclusion";
-
-const res = await fetch(
-  "https://tessera-api-production-2b6c.up.railway.app/api/verify",
-  { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ txHash: "0x<a-finalized-base-tx>" }) },
-);
-const proof = await res.json();
-
-console.log("signature:", verifyAVP(proof).ok);          // recovers the oracle signer
-console.log("inclusion:", (await verifyInclusion(proof)).ok); // checks the trie proof
-```
-
-`verifyAVP` recomputes the canonical bytes and recovers the EIP-191 signer with no
-network access. `verifyInclusion` checks the transactions-trie proof. Both return
-`true` for a genuine proof and `false` for any tampered field.
-
-### 2. Run the full stack locally
-
-Two processes: the Go verification API and the Next.js web app.
-
-```bash
-# terminal 1: the verification API (real consensus, signing, bond)
-cd agent
-BOND_ENABLED=true BOND_CONTRACT=0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85 \
-  go run ./cmd/console-api            # serves http://localhost:8787
-
-# terminal 2: the console and landing page
-cd web
-npm install && npm run dev            # serves http://localhost:3000/console
-```
-
-Paste a Base transaction hash into the console and watch the eleven sources
-attest over server-sent events, then verify the signature in the browser.
+The verification stack is a Go service; the honesty bond is a Solidity contract
+on Base; the operator console is a Next.js app; the proof format ships as an open
+schema with reference verifiers in JS and Go. For the full component breakdown,
+the request lifecycle, the trust model, the canonicalization and signing scheme,
+and the on-chain slashing mechanism, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ## The AgenticVerificationProof
 
@@ -110,7 +176,7 @@ field semantics, and the signing scheme.
   "blockHash": "0x...",
   "txHash": "0x...",
   "txIndex": 168,
-  "consensus": { "sources": 11, "responders": 11, "agreed": 9, "quorum": 9, "agreedSources": ["..."] },
+  "consensus": { "sources": 11, "responders": 11, "agreed": 11, "quorum": 9, "agreedSources": ["..."] },
   "finality": { "finalized": true, "finalizedBlock": 48515000, "confirmations": 3658 },
   "merkleProof": { "type": "transactionsTrie", "transactionsRoot": "0x...", "txIndex": 168, "key": "0x...", "nodes": ["0x..."], "leaf": "0x..." },
   "attestation": { "signer": "0x...", "scheme": "EIP-191", "signature": "0x..." },
@@ -120,76 +186,17 @@ field semantics, and the signing scheme.
 }
 ```
 
-The signature covers every field except `attestation`, serialized as RFC 8785
-canonical JSON and signed with EIP-191. A valid signature vouches for the whole
-proof, including a `verified: false` verdict.
-
-## How verification works
-
-**Multi-source consensus.** Tessera queries eleven independent sources at once:
-ten distinct-operator Base RPC endpoints plus a block-explorer indexer. Each
-source that answers in time votes with its view of `(blockNumber, blockHash,
-status)`. A source that errors or times out abstains. The signed value is the one
-a dynamic quorum of responders agrees on, where quorum is a supermajority of the
-sources that actually answered, with an absolute floor. Independence of the
-sources is the real security parameter.
-
-**Finality gate.** A block that is merely included can still be reorganized out.
-Before signing `verified: true`, a quorum of sources must confirm the block is at
-or under the chain's finalized tag. A consensus-valid but not-yet-final
-transaction returns a signed `verified: false` with a reason, which protects
-anything that later relies on the proof, such as a bond.
-
-**Transactions-trie inclusion proof.** A block header commits to its
-transactions through `transactionsRoot`, the root of a Merkle-Patricia trie. When
-available, the proof carries a standalone inclusion proof for the transaction,
-checkable against that root with no trust in the oracle. It is type-agnostic,
-built from raw consensus-encoded transaction bytes, so OP-stack deposit
-transactions (type `0x7E`, always index 0 on Base) need no special handling.
-
-## Honesty bond and slashing
-
-Every verified proof advertises a standing USDC bond in
-[TesseraBond](contracts/src/TesseraBond.sol), deployed on Base at
-`0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85`. High-value proofs are additionally
-anchored on-chain, which earmarks part of the bond. Anyone can then call
-`challenge(proofId)`. The contract reads the block's canonical hash on-chain,
-using EIP-2935 with a `blockhash` fallback, and if the proof's claimed hash
-differs, the stake is slashed to the challenger. There is no oracle and no
-arbiter in the loop.
-
-```bash
-cd contracts && forge test         # full suite, including slashing a lying oracle
-```
-
-On Base mainnet, a deliberately fraudulent anchor was slashed by a real
-profit-seeking searcher in the next block, roughly two seconds, before Tessera's
-own challenger could act. Fraud is punished by permissionless actors in seconds.
-An honest oracle never carries a wrong hash, so its proofs are safe.
-
-## Hire it over CAP
-
-Tessera is a real CAP provider. Payment and escrow are handled entirely by CAP,
-which locks the caller's USDC in CAPVault and settles on delivery. The provider
-is transport-agnostic, so the full order lifecycle runs offline with no
-credentials for development and against live CAP in production.
-
-```bash
-# offline: simulate the full CAP order lifecycle with the real verifier
-cd agent && TRANSPORT=loopback go run ./cmd/provider
-
-# live: run online, then a second agent hires it (CAP forbids self-hire)
-cd agent && TRANSPORT=croo go run ./cmd/provider
-cd agent && go run ./cmd/requester -tx 0x<base-tx> -block <n> -addr 0x<involved-addr>
-```
+The signature covers every field except `attestation`. A valid signature vouches
+for the whole proof, including a `verified: false` verdict.
 
 ## Verify a proof yourself
 
 Reference verifiers ship in [sdk/](sdk/) for JavaScript and Go. Both are
-standalone, tested against the same real oracle-signed proof, and prove the
+standalone and are tested against the same real oracle-signed proof, proving the
 canonical byte form reproduces identically across implementations.
 
 ```ts
+// npm install @olanuel-tessera/avp
 import { verifyAVP } from "@olanuel-tessera/avp";
 import { verifyInclusion } from "@olanuel-tessera/avp/inclusion";
 const { ok, signer } = verifyAVP(proof);
@@ -197,19 +204,40 @@ const inclusion = await verifyInclusion(proof);
 ```
 
 ```go
+// go get github.com/Manuel-dev01/tessera/sdk/go
 import avp "github.com/Manuel-dev01/tessera/sdk/go"
 r, _ := avp.Verify(proofJSON, true)
 ok, _ := avp.VerifyProofInclusion(proofJSON, nil)
 ```
 
-## Repo layout
+## Run it locally
+
+Two processes: the Go verification API and the Next.js web app.
+
+```bash
+# terminal 1: the verification API (real consensus, signing, bond)
+cd agent
+BOND_ENABLED=true BOND_CONTRACT=0x69D095fb49bcE5735d48710Eb8dD6F94aD72fF85 \
+  go run ./cmd/console-api            # serves http://localhost:8787
+
+# terminal 2: the console and landing page
+cd web
+npm install && npm run dev            # serves http://localhost:3000/console
+```
+
+Copy `.env.example` to `.env` and fill in the oracle key for signing. The
+contracts test suite runs with `cd contracts && forge test`.
+
+## Project structure
 
 ```
-schema/     AgenticVerificationProof v1, the open standard
+schema/     AgenticVerificationProof v1, the open standard (JSON Schema + spec)
 sdk/        Reference verifiers: JS @olanuel-tessera/avp and Go
-agent/      Go CAP provider and console API: consensus, signing, bond client, merkle prover, watchtower
-contracts/  Foundry project: TesseraBond.sol with the standing bond and EIP-2935 slashing
+agent/      Go CAP provider + console API: consensus, signing, bond client, merkle prover, watchtower
+contracts/  Foundry project: TesseraBond.sol with the standing bond + EIP-2935 slashing
 web/        Next.js landing page and operator console, wired to the agent
+demo/       One-command end-to-end demo script
+docs/       Architecture documentation
 ```
 
 ## Build status
@@ -224,7 +252,7 @@ web/        Next.js landing page and operator console, wired to the agent
 | 5 | Open standard and reference verifier SDKs | done, published to npm and Go |
 | 6 | Transactions-trie inclusion proof | done, live in every proof |
 | 7 | Continuous integration across all stacks | done, green |
-| 8 | End-to-end demo and runbook | done |
+| 8 | End-to-end demo | done |
 
 ## Deployment and CI
 
@@ -232,7 +260,8 @@ The web app is hosted on Vercel and the verification API on Railway. Both deploy
 automatically on push to `main`: Vercel through its native Git integration, and
 the API through a GitHub Action. Continuous integration runs the Go tests, the
 SDK tests, and the Foundry suite on every push and pull request. The SDK is
-published to npm automatically when a `sdk/js/v*` tag is pushed.
+published to npm automatically when a `sdk/js/v*` tag is pushed. See
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment-topology) for the topology.
 
 ## Security
 
