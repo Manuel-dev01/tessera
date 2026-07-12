@@ -15,10 +15,13 @@ where each half proved the bond was real. Tessera issues the digital equivalent.
 
 Built for the CROO Agent Hackathon.
 
+**▶ Watch the demo:** https://www.youtube.com/watch?v=2f5mS_z1aR8
+
 ## Live
 
 | Surface | URL |
 |---|---|
+| Demo video | https://www.youtube.com/watch?v=2f5mS_z1aR8 |
 | Operator console | https://tessera-console.vercel.app/console |
 | Landing page | https://tessera-console.vercel.app |
 | Verification API | https://tessera-api-production-2b6c.up.railway.app |
