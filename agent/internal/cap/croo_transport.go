@@ -7,11 +7,19 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"time"
 
 	croo "github.com/CROO-Network/go-sdk"
 
 	"tessera/agent/internal/handler"
 )
+
+// reconnectCooldown is how long we wait after the stream drops before dialing a
+// fresh connection. The SDK's own read loop re-dials immediately on a transient
+// reset, which races the still-open server session and dies with a duplicate-key
+// policy violation. Waiting lets CROO release the stale session so a clean
+// reconnect succeeds.
+const reconnectCooldown = 40 * time.Second
 
 // LiveTransport is the real CAP transport backed by the CROO Go SDK. It is the
 // ONLY file in the codebase that imports github.com/CROO-Network/go-sdk, so all
@@ -56,7 +64,35 @@ func NewLiveTransport(baseURL, wsURL, rpcURL, sdkKey string, log *slog.Logger) (
 	}, nil
 }
 
+// Run keeps the provider online across transient WebSocket drops. The SDK gives
+// up permanently on a duplicate-key policy violation (which a fast reconnect
+// triggers), so we supervise the stream and re-establish it after a cooldown.
 func (t *LiveTransport) Run(ctx context.Context, h handler.OrderHandler) error {
+	first := true
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if !first {
+			t.log.Warn("CAP stream dropped; reconnecting after cooldown", "cooldownSec", int(reconnectCooldown.Seconds()))
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(reconnectCooldown):
+			}
+		}
+		first = false
+
+		if err := t.serveOnce(ctx, h); err != nil && ctx.Err() == nil {
+			t.log.Warn("CAP stream ended", "err", err)
+		}
+	}
+}
+
+// serveOnce connects, registers handlers, and blocks until the stream dies or the
+// context is cancelled. It polls the stream's terminal error so a dead connection
+// is detected promptly instead of silently hanging.
+func (t *LiveTransport) serveOnce(ctx context.Context, h handler.OrderHandler) error {
 	stream, err := t.client.ConnectWebSocket(ctx)
 	if err != nil {
 		return fmt.Errorf("connect websocket: %w", err)
@@ -74,11 +110,19 @@ func (t *LiveTransport) Run(ctx context.Context, h handler.OrderHandler) error {
 	})
 
 	t.log.Info("provider online — waiting for orders", "ws", "connected")
-	<-ctx.Done()
-	if err := stream.Err(); err != nil {
-		return fmt.Errorf("event stream: %w", err)
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if e := stream.Err(); e != nil {
+				return e
+			}
+		}
 	}
-	return ctx.Err()
 }
 
 // onNegotiation accepts the negotiation and stores its Requirements keyed by the
