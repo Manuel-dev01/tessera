@@ -1,0 +1,48 @@
+name: Release npm (@olanuel-tessera/avp)
+
+# Publish the JS verifier SDK to npm when a tag like `sdk/js/v1.2.3` is pushed.
+# The tag version must match sdk/js/package.json. Needs an NPM_TOKEN repo secret
+# (an npm automation or granular token with publish rights on @olanuel-tessera).
+#
+#   npm version patch            # in sdk/js, bumps package.json + creates a tag
+#   git push && git push --tags  # or push the specific sdk/js/vX.Y.Z tag
+on:
+  push:
+    tags:
+      - "sdk/js/v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+          cache-dependency-path: sdk/js/package-lock.json
+
+      - name: Verify tag matches package.json version
+        working-directory: sdk/js
+        run: |
+          tag_version="${GITHUB_REF_NAME#sdk/js/v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "tag version $tag_version does not match package.json $pkg_version"
+            exit 1
+          fi
+          echo "publishing @olanuel-tessera/avp@$pkg_version"
+
+      - name: Install and test
+        working-directory: sdk/js
+        run: |
+          npm ci
+          npm test
+
+      - name: Publish
+        working-directory: sdk/js
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -3,7 +3,7 @@
 > A proposed open schema for the CROO agent ecosystem. Not Tessera-specific.
 
 An **AgenticVerificationProof** (AVP) is a signed, consensus-backed attestation that a
-specific on-chain event did — or did not — occur. It is the machine-verifiable receipt
+specific on-chain event did, or did not, occur. It is the machine-verifiable receipt
 one agent hands another as trustless evidence of an on-chain fact. Any agent can issue
 one; any agent can verify one with nothing but the signer's address and a hashing
 library.
@@ -16,7 +16,7 @@ as much from a signed "this tx is not in that block" as from a signed confirmati
 
 ## Input (what a requester asks to have verified)
 
-This is the CAP service **Requirements** schema — what the hiring agent submits.
+This is the CAP service **Requirements** schema, what the hiring agent submits.
 
 ```json
 {
@@ -40,14 +40,14 @@ For `verified` to be `true`, all of the following must hold against the canonica
   (else `reason: "tx not in claimed block N (actual M)"`).
 - The receipt status is success; a reverted tx yields `verified:false`,
   `reason: "tx reverted (status 0)"`.
-- **`address` is *involved*** — it equals the tx sender (`from`), recipient (`to`),
+- **`address` is *involved***: it equals the tx sender (`from`), recipient (`to`),
   or the emitter of any log in the tx (case-insensitive). This is the intentionally
   permissive reading of "an address party to the event."
 - If `eventSignature` is given, a log must exist whose `topics[0]` equals
   `keccak256(eventSignature)`. If `logIndex` is also given, that specific
   **block-level** log index must be the matching log.
 
-A failure at any step produces a **signed** `verified:false` proof with `reason` set —
+A failure at any step produces a **signed** `verified:false` proof with `reason` set,
 never an unsigned error.
 
 ### Consensus + finality (Tessera reference issuer)
@@ -56,18 +56,18 @@ never an unsigned error.
   (many RPC operators + block-explorer indexers) concurrently. Each source that answers
   in time *votes* with its `(blockNumber, blockHash, status)`. A source that errors or
   times out simply abstains. The signed value is the one a **dynamic quorum** of
-  *responders* agrees on — quorum = `ceil(fraction × responders)` (default fraction 9/11),
+  *responders* agrees on. Quorum is `ceil(fraction * responders)` (default fraction 9/11),
   never below an absolute floor of 2. If fewer than `minResponders` answer, Tessera refuses
   to sign (`"insufficient live sources"`).
   - *Security note:* measuring quorum against responders (not a fixed configured count)
     favors liveness during outages, but would let an attacker who can force sources offline
-    shrink the honest set — the `minResponders` floor and a high supermajority fraction bound
+    shrink the honest set. The `minResponders` floor and a high supermajority fraction bound
     that. Independence of the sources is the real security parameter.
 - **Finality gate.** A block that is merely *included* can still be reorged out. Before
   signing `verified:true`, a quorum of head-reporting sources must confirm the block is at or
   under the chain's `finalized` tag (or ≥ a configured confirmation depth). The `finality`
   object records this. A consensus-valid but not-yet-final tx returns a signed
-  `verified:false` with reason `"block N not finalized …"` — protecting anything (e.g. a bond)
+  `verified:false` with reason `"block N not finalized"`, protecting anything (e.g. a bond)
   that later relies on the proof.
 
 ## Output fields
@@ -99,9 +99,9 @@ proof for the verified tx:
 | Field | Meaning |
 |---|---|
 | `type` | `"transactionsTrie"`. |
-| `transactionsRoot` | The root this proof resolves to — equals the block header's `transactionsRoot`. |
+| `transactionsRoot` | The root this proof resolves to, equal to the block header's `transactionsRoot`. |
 | `txIndex` | Position of the tx in the block. |
-| `key` | `0x` RLP(txIndex) — the trie key. |
+| `key` | `0x` RLP(txIndex), the trie key. |
 | `nodes` | `0x` MPT proof nodes, root → leaf. |
 | `leaf` | `0x` the tx's consensus encoding; `keccak256(leaf) == txHash`. |
 
@@ -109,10 +109,10 @@ It is **type-agnostic**: values are raw consensus encodings, so OP-stack deposit
 transactions (type `0x7E`, always index 0 on Base) are handled with no special
 casing. Two levels of trust:
 
-- **Oracle-vouched** — the AVP signature covers `merkleProof`, so verifying the
+- **Oracle-vouched**: the AVP signature covers `merkleProof`, so verifying the
   signature (above) plus checking `nodes` resolve under `transactionsRoot` to a
   leaf hashing to `txHash` proves the oracle attests the tx's inclusion.
-- **Trustless** — additionally fetch the block header (by `blockHash`) and confirm
+- **Trustless**: additionally fetch the block header (by `blockHash`) and confirm
   `header.transactionsRoot == merkleProof.transactionsRoot`. Then the inclusion is
   proven with no trust in the oracle at all.
 
@@ -140,7 +140,7 @@ The signature covers the **canonical byte form** of the proof object with the
 ### proofId / on-chain anchoring
 
 `bond.proofId` is `keccak256` of the canonical proof with **both** `attestation` and `bond`
-removed (the *core* fact identity — a proof's identity must not change when it is bonded, and
+removed (the *core* fact identity, since a proof's identity must not change when it is bonded, and
 `bond` cannot contain a hash of itself). The **signature** still covers `bond` (it strips only
 `attestation`), so the bond claim is signed. When `anchored:true`, the oracle has earmarked part
 of its standing stake against `proofId` in TesseraBond; anyone may call `challenge(proofId)` and,
@@ -163,7 +163,7 @@ export function verifyAVP(proof) {
 ```
 
 If `verifyAVP(proof)` returns `true`, the `signer` address vouches for every other field
-in the proof — including a `verified: false` verdict.
+in the proof, including a `verified: false` verdict.
 
 > Reference verifiers for JS (`@olanuel-tessera/avp`) and Go (`github.com/Manuel-dev01/tessera/sdk/go`)
 > live in [`../sdk`](../sdk). Both are tested against a real oracle-signed proof, proving the
@@ -171,5 +171,5 @@ in the proof — including a `verified: false` verdict.
 
 ## Versioning
 
-Breaking changes bump the tag (`avp/2.0`, …). Additive, backward-compatible fields may be
+Breaking changes bump the tag (`avp/2.0`, and so on). Additive, backward-compatible fields may be
 introduced within `avp/1.x` and MUST be ignored by older verifiers.
